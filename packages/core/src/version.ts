@@ -5,7 +5,7 @@
  *
  * No check may change without a corresponding METHODOLOGY.md revision.
  */
-export const METHODOLOGY_VERSION = "0.1.0-draft";
+export const METHODOLOGY_VERSION = "0.2.0-draft";
 
 /** Crawler build identity. Surfaced in the User-Agent. */
 export const CENSUS_VERSION = "0.1.0";

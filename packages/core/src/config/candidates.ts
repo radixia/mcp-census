@@ -141,6 +141,11 @@ export const CONVENTIONAL_ENDPOINTS: readonly string[] = [
   "/mcp",
   "/api/mcp",
   "/.well-known/mcp-endpoint",
+  // Probed only on conventional MCP subdomains (`mcp.<apex>`), where the server
+  // frequently sits at the root. It is on the shared allowlist because the guard
+  // matches on path alone, so it is technically reachable on the apex too — the
+  // least intrusive request that exists, and still governed by robots.txt.
+  "/",
 ] as const;
 
 /** Conventional MCP subdomains for D3, prefixed to the apex. */

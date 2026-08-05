@@ -1,6 +1,6 @@
 # Methodology
 
-**Version `0.1.0-draft` · last revised 2026-08-05**
+**Version `0.2.0-draft` · last revised 2026-08-05**
 
 This document is the single most important artifact in the project. It is
 versioned, and every published row carries the methodology version that produced
@@ -114,17 +114,45 @@ and the remaining 30 for the quality of what an agent finds once connected.**
 | Component | Points | Awarded when |
 |---|---|---|
 | Confirmed connection | 70 | `D5` succeeded — a real MCP server answered |
-| Discovery evidence only | 35 | any of `D1`–`D4` produced evidence but `D5` did not confirm |
+| Published discovery document | 35 | `D1`, `D2` or `D4` passed, but `D5` did not confirm |
+| Endpoint-shaped only | 20 | `D3` passed and no discovery document was found |
 | Tool surface quality | 15 | `D6`/`Q1`: tools listed, described, parameters documented |
 | Text fallbacks | 10 | `F1` |
 | Declared crawler posture | 5 | `F2`: an explicit per-agent policy either way |
 
+The discovery tiers are exclusive — a domain earns the highest one it reaches,
+never a sum of them.
+
 Discovery is weighted far above everything else because that is the census
 question. A domain an agent cannot find has no partial credit worth arguing about,
-and the 35-point tier exists only to distinguish "published something" from
+and the lower tiers exist only to distinguish "published something" from
 "published nothing".
 
-Scoring is deterministic: the same evidence always produces the same score.
+`D3` is deliberately worth less than a published document. A `405` is consistent
+with any POST-only endpoint, so on its own it is a hint rather than a finding.
+See [ADR 0002](docs/DECISIONS/0002-d3-detects-405.md).
+
+Scoring is deterministic: the same evidence always produces the same score, and
+any published score can be recomputed from the released dataset without
+re-crawling.
+
+### When we refuse to score
+
+A domain gets **no score at all** — not a zero — when we were not permitted or
+not able to look:
+
+- **`skipped_by_robots`**: `robots.txt` excluded us from every HTTP discovery
+  check. `D2` (DNS) is not gated by `robots.txt`, so a blocked domain still
+  produces a clean DNS negative; that alone does not make it assessed, because
+  publishing "Absent" on the strength of a DNS lookup would be a finding about
+  our own crawl dressed up as a finding about their site.
+- **`unreachable`**: every HTTP discovery check failed at the transport.
+
+A positive finding anywhere overrides both: if we found something, we know
+something worth publishing.
+
+Unassessed domains are reported as their own category and are excluded from
+percentage denominators.
 
 | Band | Score |
 |---|---|
@@ -206,3 +234,4 @@ These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
 |---|---|---|
 | `0.1.0-draft` | 2026-08-04 | Initial draft. Checks defined, scoring published, nothing measured. |
 | `0.1.0-draft` | 2026-08-05 | Editorial only, no change to checks or scoring. Open questions reworded to scope rather than framing. |
+| `0.2.0-draft` | 2026-08-05 | Checks `D1`–`D4`, `F1`, `F2` implemented. Scoring split the single discovery tier into "published document" (35) and "endpoint-shaped only" (20), so an unconfirmed `D3` no longer counts the same as a card. Added the explicit refuse-to-score rules. Nothing measured yet. |

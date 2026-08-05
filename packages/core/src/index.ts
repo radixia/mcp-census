@@ -1,3 +1,16 @@
+export { checkServerCard } from "./checks/d1-server-card.js";
+export { checkDnsDiscovery, type McpTxtRecord, parseMcpTxtRecord } from "./checks/d2-dns.js";
+export { checkConventionalEndpoint, endpointTargets } from "./checks/d3-endpoint.js";
+export { checkOauthProtectedResource, parseResourceMetadata } from "./checks/d4-oauth.js";
+export type { CheckContext, CheckDeps, DnsCheckDeps } from "./checks/deps.js";
+export { checkTextFallbacks } from "./checks/f1-text-fallbacks.js";
+export { type AgentPostureRow, checkCrawlerPosture } from "./checks/f2-crawler-posture.js";
+export type {
+  CheckId,
+  CheckResult,
+  CheckStatus,
+  SkipReason,
+} from "./checks/types.js";
 export {
   AI_CRAWLER_TOKENS,
   AI_CRAWLER_TOKENS_VERSION,
@@ -24,6 +37,23 @@ export {
   VANITY_DOMAIN,
 } from "./config/site.js";
 export {
+  type GuardedClientContext,
+  type GuardedClientDeps,
+  GuardedHttpClient,
+  type ProbeOutcome,
+  ROBOTS_TOKEN,
+} from "./http/guarded-client.js";
+export {
+  type FetchOptions,
+  type HttpFetch,
+  type HttpMethod,
+  type HttpRequest,
+  type HttpResponse,
+  headerValue,
+  type ResolveTxt,
+  type SafeHttpMethod,
+} from "./http/types.js";
+export {
   ALLOWED_JSONRPC_METHODS,
   type AllowedJsonRpcMethod,
   assertCrawlerIdentity,
@@ -48,4 +78,24 @@ export {
   ProbeGuardError,
   resolveCrawlerIdentity,
 } from "./politeness.js";
+export { type DomainProbeResult, probeDomain } from "./probe.js";
+export {
+  type AgentPosture,
+  agentPosture,
+  crawlDelayMs,
+  EMPTY_ROBOTS,
+  isAllowed,
+  parseRobotsTxt,
+  type RobotsGroup,
+  type RobotsRule,
+  type RobotsTxt,
+} from "./robots.js";
+export {
+  type Band,
+  bandFor,
+  POINTS,
+  type ScoreComponents,
+  type ScoreResult,
+  scoreDomain,
+} from "./scoring.js";
 export { CENSUS_VERSION, METHODOLOGY_VERSION, SPEC_VERIFIED_ON } from "./version.js";

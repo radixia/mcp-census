@@ -14,5 +14,6 @@
     "lib": ["ES2023", "DOM"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  // `src/testing` holds test doubles only and must not reach the published build.
+  "exclude": ["src/**/*.test.ts", "src/testing/**"]
 }
