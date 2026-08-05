@@ -32,11 +32,7 @@ export function nodeFetch(): HttpFetch {
         headers[name.toLowerCase()] = value;
       });
 
-      // Cap what we read: a discovery document is small, and some of these
-      // paths are served by a CDN that will happily stream a huge HTML page.
-      const raw = await response.text();
-      const body = raw.length > 512 * 1024 ? raw.slice(0, 512 * 1024) : raw;
-
+      const body = await readBody(response, options.idleTimeoutMs);
       return { status: response.status, headers, body, url: response.url || request.url };
     } catch (error) {
       // undici reports everything as `TypeError: fetch failed` and hides the
@@ -47,6 +43,63 @@ export function nodeFetch(): HttpFetch {
       clearTimeout(timer);
     }
   };
+}
+
+/** A discovery document is small; some of these paths are served by a CDN that
+ *  will happily stream a huge HTML page. */
+const MAX_BODY_BYTES = 512 * 1024;
+
+/**
+ * Read a response body, stopping when the stream goes quiet rather than when it
+ * closes.
+ *
+ * SSE responses deliver the JSON-RPC reply and then stay open — the transport
+ * keeps the stream alive for request-scoped notifications and encourages
+ * keep-alive comments on long-lived ones. `response.text()` waits for close, so
+ * a server that answered instantly consumed the entire timeout and was recorded
+ * as unreachable. Measured on our own server: `initialize` replied at once, the
+ * request took 10.9s, the 10s ceiling killed it.
+ *
+ * With no idle timeout this behaves exactly as before.
+ */
+async function readBody(response: Response, idleTimeoutMs?: number): Promise<string> {
+  if (idleTimeoutMs === undefined || response.body === null) {
+    const raw = await response.text();
+    return raw.length > MAX_BODY_BYTES ? raw.slice(0, MAX_BODY_BYTES) : raw;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let body = "";
+
+  try {
+    while (true) {
+      let idle: ReturnType<typeof setTimeout> | undefined;
+      const quiet = new Promise<"idle">((resolve) => {
+        idle = setTimeout(() => resolve("idle"), idleTimeoutMs);
+      });
+
+      let outcome: "idle" | Awaited<ReturnType<typeof reader.read>>;
+      try {
+        outcome = await Promise.race([reader.read(), quiet]);
+      } finally {
+        if (idle !== undefined) clearTimeout(idle);
+      }
+
+      // Quiet for long enough that the server has said what it is going to say.
+      if (outcome === "idle") break;
+      if (outcome.done) break;
+
+      body += decoder.decode(outcome.value, { stream: true });
+      if (body.length >= MAX_BODY_BYTES) return body.slice(0, MAX_BODY_BYTES);
+    }
+  } finally {
+    // Closing our end is the cancellation signal the transport defines, so this
+    // also tells the server to stop working on our behalf.
+    await reader.cancel().catch(() => {});
+  }
+
+  return body;
 }
 
 function errorCode(error: unknown): string {

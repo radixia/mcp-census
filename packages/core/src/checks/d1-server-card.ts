@@ -9,6 +9,7 @@
 
 import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import { headerValue } from "../http/types.js";
+import { isWithinApex } from "../politeness.js";
 import { type CheckContext, type CheckDeps, looksLikeHtml, parseJsonObject } from "./deps.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
@@ -27,6 +28,56 @@ export interface CandidateProbe {
   readonly status?: number;
   readonly documentKeys?: readonly string[];
   readonly error?: string;
+}
+
+/**
+ * Pull an endpoint URL out of a card, whatever shape the card happens to be.
+ *
+ * There is no agreed format — the wild contains at least the registry
+ * `server.json` shape (`remotes[].url`), the AI Catalog shape, a bare
+ * `endpoint`, and the client *configuration* format (`mcpServers`). We read all
+ * of them rather than pretending one won.
+ *
+ * Only endpoints on the target apex are returned. A card pointing at a vendor's
+ * host describes somebody else's server, and probing it would take us off the
+ * domain we were asked to measure.
+ */
+export function endpointFromCard(
+  document: Record<string, unknown>,
+  apex: string,
+): { host: string; path: string } | undefined {
+  const urls: string[] = [];
+
+  const collect = (value: unknown): void => {
+    if (typeof value === "string") {
+      urls.push(value);
+    } else if (Array.isArray(value)) {
+      for (const item of value) collect(item);
+    } else if (typeof value === "object" && value !== null) {
+      const record = value as Record<string, unknown>;
+      for (const key of ["url", "endpoint", "uri", "href"]) collect(record[key]);
+      for (const key of ["remotes", "servers", "mcpServers", "entries"]) {
+        const nested = record[key];
+        if (typeof nested === "object" && nested !== null) collect(Object.values(nested));
+      }
+    }
+  };
+
+  collect(document);
+
+  for (const candidate of urls) {
+    let parsed: URL;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      continue;
+    }
+    if (parsed.protocol !== "https:") continue;
+    if (!isWithinApex(parsed.hostname, apex)) continue;
+    return { host: parsed.hostname, path: parsed.pathname === "" ? "/" : parsed.pathname };
+  }
+
+  return undefined;
 }
 
 export async function checkServerCard(
@@ -100,6 +151,15 @@ export async function checkServerCard(
       status: response.status,
       documentKeys: Object.keys(document).slice(0, 20),
     });
+
+    // A card usually names the endpoint it describes. Registering it is what
+    // lets D5 confirm domains that publish a card but answer nothing at a
+    // conventional path — cloudflare.com and sentry.io both look like that, and
+    // relying on D3's 405 alone would leave them permanently unconfirmed.
+    if (deps.client.endpointUrl === undefined) {
+      const endpoint = endpointFromCard(document, context.apex);
+      if (endpoint !== undefined) deps.client.endpointDiscovered(endpoint.path, endpoint.host);
+    }
   }
 
   const latencyMs = deps.now() - started;

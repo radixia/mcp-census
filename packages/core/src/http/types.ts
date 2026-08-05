@@ -28,6 +28,21 @@ export interface HttpResponse {
 
 export interface FetchOptions {
   readonly timeoutMs: number;
+  /**
+   * Stop reading the body once it has been quiet for this long, even if the
+   * stream is still open.
+   *
+   * An SSE response delivers the JSON-RPC reply and then *stays open* — the
+   * transport keeps the stream alive for request-scoped notifications, and
+   * long-lived streams are even encouraged to emit keep-alive comments. Waiting
+   * for the stream to close therefore burns the whole timeout on a server that
+   * answered immediately, and reports it as unreachable.
+   *
+   * Observed on our own server: `initialize` replied at once but the request
+   * took 10.9s to complete, over the 10s ceiling. Every SSE-based MCP server
+   * would have been recorded as dead.
+   */
+  readonly idleTimeoutMs?: number;
 }
 
 /**

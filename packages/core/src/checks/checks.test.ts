@@ -430,7 +430,17 @@ describe("probeDomain", () => {
 
     const result = await probeDomain(h.deps, { apex: APEX });
 
-    expect(result.checks.map((c) => c.id)).toEqual(["F2", "D3", "D1", "D4", "D2", "F1"]);
+    expect(result.checks.map((c) => c.id)).toEqual([
+      "F2",
+      "D3",
+      "D1",
+      "D4",
+      "D2",
+      "F1",
+      "D5",
+      "D6",
+      "Q1",
+    ]);
     expect(result.checks.find((c) => c.id === "D1")?.status).toBe("pass");
     expect(evidence(result.checks.find((c) => c.id === "D1") as CheckResult).respondedWith).toEqual(
       ["server-card-endpoint-relative"],

@@ -112,6 +112,12 @@ export class GuardedHttpClient {
     return this.#endpointHost;
   }
 
+  /** The full endpoint URL, once discovery has found one. */
+  get endpointUrl(): string | undefined {
+    if (this.#endpointHost === undefined || this.#endpointPath === undefined) return undefined;
+    return `https://${this.#endpointHost}${this.#endpointPath}`;
+  }
+
   /** Robots for a host we have already contacted. Exposed so F2 can report it. */
   robotsFor(host: string): RobotsTxt | undefined {
     return this.#robots.get(host);
@@ -197,6 +203,16 @@ export class GuardedHttpClient {
     readonly method: string;
     readonly protocolVersion?: string;
     readonly id?: string | number;
+    /**
+     * Echo a session id the server itself issued.
+     *
+     * Legacy-era servers mint one on `initialize` and reject later requests
+     * without it, so `tools/list` is unreachable on them otherwise — and legacy
+     * is most of the deployed population. This is a protocol identifier the
+     * server handed us, not a credential: we never present it as proof of
+     * identity, and `assertNoCredentials` still forbids everything that is.
+     */
+    readonly sessionId?: string;
   }): Promise<ProbeOutcome> {
     assertJsonRpcMethodAllowed(params.method);
     assertHttpMethodAllowed("POST", { discoveryEstablished: this.#discoveryEstablished });
@@ -212,6 +228,8 @@ export class GuardedHttpClient {
       ...(params.protocolVersion === undefined ? {} : { protocolVersion: params.protocolVersion }),
     });
 
+    if (params.sessionId !== undefined) headers["mcp-session-id"] = params.sessionId;
+
     const body = JSON.stringify(jsonRpcBody(params.method, params.id ?? 1, params.protocolVersion));
     return this.#send({ url: params.url, method: "POST", headers, body });
   }
@@ -222,7 +240,10 @@ export class GuardedHttpClient {
   ): Promise<ProbeOutcome> {
     assertNoCredentials(request.headers);
 
-    const fetchOptions: FetchOptions = { timeoutMs: POLITENESS.totalTimeoutMs };
+    const fetchOptions: FetchOptions = {
+      timeoutMs: POLITENESS.totalTimeoutMs,
+      idleTimeoutMs: POLITENESS.bodyIdleTimeoutMs,
+    };
     let attempt = 0;
 
     while (true) {
@@ -309,7 +330,7 @@ export class GuardedHttpClient {
       this.#requestCount += 1;
       const followed = await this.deps.fetch(
         { ...request, url: target.toString() },
-        { timeoutMs: POLITENESS.totalTimeoutMs },
+        { timeoutMs: POLITENESS.totalTimeoutMs, idleTimeoutMs: POLITENESS.bodyIdleTimeoutMs },
       );
       return { outcome: "response", response: followed };
     } catch (error) {

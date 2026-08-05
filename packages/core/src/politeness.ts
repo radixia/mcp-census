@@ -48,6 +48,12 @@ export const POLITENESS = {
   maxGlobalConcurrency: 64,
   connectTimeoutMs: 5_000,
   totalTimeoutMs: 10_000,
+  /**
+   * How long to keep reading a response body after it goes quiet. SSE streams
+   * stay open after delivering a reply, so this is what separates "the server
+   * has finished answering" from "the server is slow".
+   */
+  bodyIdleTimeoutMs: 2_000,
   maxRetries: 2,
   retryOnStatus: [429, 500, 502, 503, 504],
   /** One hop, and it must stay inside the target apex. */

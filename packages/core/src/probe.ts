@@ -17,10 +17,12 @@ import { checkServerCard } from "./checks/d1-server-card.js";
 import { checkDnsDiscovery } from "./checks/d2-dns.js";
 import { checkConventionalEndpoint } from "./checks/d3-endpoint.js";
 import { checkOauthProtectedResource } from "./checks/d4-oauth.js";
+import { checkHandshake } from "./checks/d5-handshake.js";
+import { checkToolListing } from "./checks/d6-tools.js";
 import type { CheckContext, DnsCheckDeps } from "./checks/deps.js";
 import { checkTextFallbacks } from "./checks/f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./checks/f2-crawler-posture.js";
-import { type CheckResult, errored } from "./checks/types.js";
+import { type CheckResult, errored, skip } from "./checks/types.js";
 import { CANDIDATES_VERSION } from "./config/candidates.js";
 import { ProbeGuardError } from "./politeness.js";
 import { type ScoreResult, scoreDomain } from "./scoring.js";
@@ -50,6 +52,9 @@ export async function probeDomain(
     { id: "D4", run: () => checkOauthProtectedResource(deps, context) },
     { id: "D2", run: () => checkDnsDiscovery(deps, context) },
     { id: "F1", run: () => checkTextFallbacks(deps, context) },
+    // Last, because it needs whatever endpoint D3 or D1 turned up, and because
+    // it is the only step that POSTs.
+    { id: "D5", run: () => checkHandshake(deps, context) },
   ] as const;
 
   for (const step of steps) {
@@ -62,6 +67,25 @@ export async function probeDomain(
       if (error instanceof ProbeGuardError) throw error;
       checks.push(errored(step.id, error, 0));
     }
+  }
+
+  // Tools are only worth asking for once a server has actually answered.
+  const handshake = checks.find((c) => c.id === "D5");
+  if (handshake?.status === "pass") {
+    try {
+      const sessionId = (handshake.evidence as { sessionId?: unknown }).sessionId;
+      const { d6, q1 } = await checkToolListing(
+        deps,
+        context,
+        typeof sessionId === "string" ? sessionId : undefined,
+      );
+      checks.push(d6, q1);
+    } catch (error) {
+      if (error instanceof ProbeGuardError) throw error;
+      checks.push(errored("D6", error, 0));
+    }
+  } else {
+    checks.push(skip("D6", "handshake_did_not_succeed"), skip("Q1", "handshake_did_not_succeed"));
   }
 
   return {
