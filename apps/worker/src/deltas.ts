@@ -45,18 +45,26 @@ export async function computeDeltas(
   dropped: number;
 }> {
   const current = await env.DB.prepare(
-    `SELECT id FROM runs WHERE id = ? AND status = 'complete' AND usable_for_delta = 1`,
+    `SELECT id, universe_filter FROM runs
+      WHERE id = ? AND status = 'complete' AND usable_for_delta = 1`,
   )
     .bind(runId)
-    .first<{ id: number }>();
+    .first<{ id: number; universe_filter: string | null }>();
   if (current === null) return { observed: 0, confirmed: 0, dropped: 0 };
 
+  // Compare like with like. The previous usable run must have covered the SAME
+  // population: a full run measured against last night's watchlist would only
+  // ever compare the ~3,000 domains they share, silently reporting nothing about
+  // the other 4,400 while looking like a full comparison.
   const previous = await env.DB.prepare(
     `SELECT id FROM runs
-      WHERE id < ? AND status = 'complete' AND usable_for_delta = 1
+      WHERE id < ?
+        AND status = 'complete'
+        AND usable_for_delta = 1
+        AND universe_filter IS ?
       ORDER BY id DESC LIMIT 1`,
   )
-    .bind(runId)
+    .bind(runId, current.universe_filter)
     .first<{ id: number }>();
   // Nothing to compare against yet. The first usable run is a baseline, not a
   // set of changes — publishing it as changes would announce the entire census.

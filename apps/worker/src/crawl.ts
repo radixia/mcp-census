@@ -26,38 +26,72 @@ import type { CrawlMessage, Env } from "./env.js";
 import { closeRun, loadOptOuts, openRun, persistScan } from "./store.js";
 
 /**
+ * Upper bounds on a night's work.
+ *
+ * These are backstops against a runaway run, not the intended size. If a real
+ * population ever exceeds one, the run is silently incomplete — so
+ * `selectDomains` reports the shortfall instead of truncating quietly. A census
+ * that drops domains without saying so is indistinguishable from one that
+ * measured them and found nothing.
+ */
+const MAX_FULL = 12_000;
+const MAX_WATCHLIST = 6_000;
+
+/**
  * Which domains to probe tonight. Tiered per ADR 0004: the watchlist daily, the
  * full universe weekly, because nothing changes daily on a domain that has been
  * Absent for six months.
+ *
+ * Both queries order deterministically. An unordered LIMIT lets SQLite return a
+ * different subset each night, which does not corrupt a delta — the comparison
+ * inner-joins on apex, so a domain missing from either side simply yields no
+ * change — but it does mean real transitions get missed at random, which is worse
+ * than missing them predictably.
  */
-async function selectDomains(env: Env, full: boolean, limit: number): Promise<string[]> {
-  const query = full
-    ? `SELECT apex FROM domains
-        WHERE opted_out_at IS NULL AND source = 'universe'
-        ORDER BY rank IS NULL, rank
-        LIMIT ?`
+async function selectDomains(
+  env: Env,
+  full: boolean,
+  limit: number,
+): Promise<{ domains: string[]; available: number }> {
+  const from = full
+    ? `FROM domains d WHERE d.opted_out_at IS NULL AND d.source = 'universe'`
     : // The watchlist: anything that has ever shown a discovery signal, plus the
       // conference cohort, which is small and always worth being current on.
-      `SELECT DISTINCT d.apex FROM domains d
-        LEFT JOIN scans s ON s.apex = d.apex
-        LEFT JOIN check_results cr
-               ON cr.scan_id = s.id
-              AND cr.check_id IN ('D1','D3','D4','D5')
-              AND cr.status = 'pass'
+      `FROM domains d
         WHERE d.opted_out_at IS NULL
           AND d.source = 'universe'
-          AND (cr.scan_id IS NOT NULL OR d.universe = 'D')
-        LIMIT ?`;
+          AND (d.universe = 'D' OR EXISTS (
+                SELECT 1 FROM scans s
+                  JOIN check_results cr ON cr.scan_id = s.id
+                 WHERE s.apex = d.apex
+                   AND cr.check_id IN ('D1','D3','D4','D5')
+                   AND cr.status = 'pass'))`;
 
-  const { results } = await env.DB.prepare(query).bind(limit).all<{ apex: string }>();
-  return results.map((r) => r.apex);
+  const total = await env.DB.prepare(`SELECT COUNT(*) AS n ${from}`).first<{ n: number }>();
+
+  const { results } = await env.DB.prepare(
+    `SELECT d.apex ${from}
+      ORDER BY ${full ? "d.rank IS NULL, d.rank, d.apex" : "d.apex"}
+      LIMIT ?`,
+  )
+    .bind(limit)
+    .all<{ apex: string }>();
+
+  return { domains: results.map((r) => r.apex), available: total?.n ?? results.length };
 }
 
 export async function scheduled(event: ScheduledController, env: Env): Promise<void> {
   // Sunday is the full universe; every other day is the watchlist.
   const full = new Date(event.scheduledTime).getUTCDay() === 0;
-  const domains = await selectDomains(env, full, full ? 8000 : 2000);
+  const { domains, available } = await selectDomains(env, full, full ? MAX_FULL : MAX_WATCHLIST);
   if (domains.length === 0) return;
+  if (domains.length < available) {
+    // Loud, because the alternative is a run that looks complete and is not.
+    console.warn(
+      `[census] ${full ? "full" : "watchlist"} run truncated: ` +
+        `probing ${domains.length} of ${available} eligible domains. Raise the cap.`,
+    );
+  }
 
   const runId = await openRun(env, {
     methodologyVersion: METHODOLOGY_VERSION,
