@@ -88,6 +88,14 @@ identity, not the crawler contact.)
 - Server-rendered HTML from the Worker with the Cache API and
   `stale-while-revalidate`. **No SPA framework.** Charts are server-generated
   inline SVG — no chart library.
+- **Skin is a theme, and the default is neutral.** Structural CSS names no brand
+  (`--accent`, never `--magenta`); token values come from
+  `packages/core/src/theme`. Radixia's theme is *generated* from the
+  [`@radixia/brand`](https://github.com/radixia/brand) devDependency via
+  `pnpm theme:sync` and verified by `pnpm theme:check` — never hand-edited. See
+  `docs/DECISIONS/0006`. To change a colour, edit the brand package and bump it;
+  editing it here is how the census and the site drift apart, which has already
+  happened once and cost two accessibility defects.
 - Vitest; Biome for lint **and** format; Wrangler
 - `packages/core` has **zero Cloudflare dependencies** and does no I/O: the same
   code runs in the CLI, the Worker and a local Node pilot script. Probes take
@@ -176,7 +184,7 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 | 1 | Core probes D1–D6, Q1, F1, F2 + pilot | **done** 2026-08-05 |
 | 2 | CLI `npx mcpcensus check` | **done**; not yet published to npm |
 | 3 | Cloudflare infra — D1, R2, KV, Queues, cron | **done** 2026-08-05 |
-| 4 | Full census over Universe R + D | in progress |
+| 4 | Full census over Universe R + D | **done** 2026-08-05 — 7,421 assessed, in D1 as run 3 |
 | 5 | Shadow MCP classification | **partial** — see below |
 | 6 | Public site, live at www.radixia.ai/census/ | **done** 2026-08-05 |
 | 7 | Data release, Parquet, Zenodo | tooling done, no release cut |

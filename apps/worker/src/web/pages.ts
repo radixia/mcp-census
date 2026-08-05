@@ -8,7 +8,7 @@
 
 import { CENSUS_VERSION, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/core";
 
-import { barChart, esc, page, statGrid, statusPill } from "./layout.js";
+import { barChart, esc, type PageChrome, page, statGrid, statusPill } from "./layout.js";
 
 /** Provenance of each candidate path, so the fragmentation chart is legible. */
 const CANDIDATE_LABELS: Record<string, string> = {
@@ -43,6 +43,7 @@ export interface HeadlineData {
 const pct = (n: number, d: number): string => (d === 0 ? "—" : `${Math.round((n / d) * 100)}%`);
 
 export function landingPage(data: {
+  chrome?: PageChrome;
   headline: HeadlineData;
   candidates: Array<{ candidate_id: string; n: number }>;
   runFinishedAt: string | null;
@@ -109,15 +110,17 @@ ${
 `;
 
   return page({
-    title: "MCP Census — the agent-reachable web, measured",
+    title: "The agent-reachable web, measured",
     description:
       "Of the organisations that provably run an MCP server, how many can an agent actually find? An open, reproducible census.",
     path: "/",
+    ...(data.chrome === undefined ? {} : { chrome: data.chrome }),
     body,
   });
 }
 
 export function checkPage(options: {
+  chrome?: PageChrome;
   domain?: string;
   result?: {
     apex: string;
@@ -198,18 +201,17 @@ weaknesses — <a href="${esc(censusUrl("/crawler"))}">exactly what we do</a>.</
 `;
 
   return page({
-    title:
-      options.domain === undefined
-        ? "Check a domain — MCP Census"
-        : `${options.domain} — MCP Census`,
+    title: options.domain ?? "Check a domain",
     description:
       "Check whether an AI agent could discover and connect to an MCP server for a domain.",
     path: "/check",
+    ...(options.chrome === undefined ? {} : { chrome: options.chrome }),
     body,
   });
 }
 
 export function resultsPage(data: {
+  chrome?: PageChrome;
   rows: Array<{
     apex: string;
     score: number | null;
@@ -258,14 +260,16 @@ or open an issue. Being publicly wrong about a named domain is the failure we ca
 `;
 
   return page({
-    title: "Results — MCP Census",
+    title: "Results",
     description: "Every domain measured by the MCP Census, with its score and band.",
     path: "/results",
+    ...(data.chrome === undefined ? {} : { chrome: data.chrome }),
     body,
   });
 }
 
 export function domainPage(data: {
+  chrome?: PageChrome;
   apex: string;
   score: number | null;
   band: string | null;
@@ -322,9 +326,10 @@ ${
 `;
 
   return page({
-    title: `${data.apex} — MCP Census`,
+    title: data.apex,
     description: `Whether an AI agent could discover and connect to an MCP server for ${data.apex}.`,
     path: `/d/${data.apex}`,
+    ...(data.chrome === undefined ? {} : { chrome: data.chrome }),
     body,
   });
 }
@@ -352,6 +357,7 @@ export function staticPage(options: {
   path: string;
   description: string;
   body: string;
+  chrome?: PageChrome;
 }): string {
   return page(options);
 }
@@ -359,6 +365,7 @@ export function staticPage(options: {
 export const CENSUS_BUILD = { CENSUS_VERSION, METHODOLOGY_VERSION };
 
 export function changesPage(data: {
+  chrome?: PageChrome;
   changes: Array<{
     apex: string;
     check_id: string;
@@ -426,9 +433,10 @@ ${
 `;
 
   return page({
-    title: "What changed — MCP Census",
+    title: "What changed",
     description: "Confirmed changes in MCP adoption, debounced across two consecutive runs.",
     path: "/changes",
+    ...(data.chrome === undefined ? {} : { chrome: data.chrome }),
     body,
   });
 }

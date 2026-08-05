@@ -118,4 +118,9 @@ export {
   type ScoreResult,
   scoreDomain,
 } from "./scoring.js";
+export { DEFAULT_THEME_ID, resolveTheme, THEMES } from "./theme/index.js";
+export { NEUTRAL_THEME } from "./theme/neutral.js";
+export { RADIXIA_BRAND_VERSION, RADIXIA_THEME } from "./theme/radixia.js";
+export { renderThemeCss, themeScript } from "./theme/render.js";
+export type { CensusTheme, ThemeBranding, ThemeTokens } from "./theme/types.js";
 export { CENSUS_VERSION, METHODOLOGY_VERSION, SPEC_VERIFIED_ON } from "./version.js";

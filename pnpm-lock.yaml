@@ -32,6 +32,9 @@ importers:
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.5.7
+      '@radixia/brand':
+        specifier: github:radixia/brand#v0.2.0
+        version: https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -547,6 +550,11 @@ packages:
 
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
+
+  '@radixia/brand@https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb':
+    resolution: {gitHosted: true, integrity: sha512-UUdiDH+xd5DGOBzV80/bXLhGWATOdhrcv2pVl7HT7x9oRLs3KfEAYWzglKb16sODnY7B6FdjBXJnBsO4Ekp0sA==, tarball: https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb}
+    version: 0.2.0
+    engines: {node: '>=20'}
 
   '@rolldown/binding-android-arm64@1.2.2':
     resolution: {integrity: sha512-l7x215OGvo1s52JWmR8U/DAVzEDWBCIbTm28aeJV/WDTSHgcKXaZTuBT0hJMs5NggilfJTW3clZVvd24yfKJxA==}
@@ -1447,6 +1455,8 @@ snapshots:
       supports-color: 10.2.2
 
   '@poppinss/exception@1.2.3': {}
+
+  '@radixia/brand@https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb': {}
 
   '@rolldown/binding-android-arm64@1.2.2':
     optional: true

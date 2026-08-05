@@ -16,5 +16,8 @@
     "rules": {
       "preset": "recommended"
     }
+  },
+  "files": {
+    "includes": ["**", "!packages/core/src/theme/radixia.ts"]
   }
 }

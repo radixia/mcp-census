@@ -18,10 +18,13 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "pilot": "pnpm --filter @mcp-census/core build && pnpm --filter @mcp-census/scripts run pilot"
+    "pilot": "pnpm --filter @mcp-census/core build && pnpm --filter @mcp-census/scripts run pilot",
+    "theme:sync": "cd scripts && node theme/sync-radixia.ts",
+    "theme:check": "cd scripts && node theme/sync-radixia.ts --check"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@radixia/brand": "github:radixia/brand#v0.2.0",
     "typescript": "catalog:"
   }
 }

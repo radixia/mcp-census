@@ -1,9 +1,10 @@
+import { NEUTRAL_THEME, RADIXIA_THEME, THEMES } from "@mcp-census/core";
 import { describe, expect, it } from "vitest";
-
 import { fixesFor, normaliseDomain } from "../check.js";
-import { barChart, esc } from "./layout.js";
+
+import { barChart, esc, page } from "./layout.js";
 import { badgeSvg, checkPage, domainPage, landingPage, resultsPage } from "./pages.js";
-import { CENSUS_CSS } from "./styles.js";
+import { censusStylesheet, STRUCTURE_CSS } from "./styles.js";
 
 const HEADLINE = {
   assessed: 400,
@@ -228,18 +229,85 @@ describe("charts", () => {
 });
 
 describe("stylesheet", () => {
-  it("carries the radixia.ai tokens so the census reads as part of the site", () => {
-    expect(CENSUS_CSS).toContain("--magenta:#d6117e");
-    expect(CENSUS_CSS).toContain("Public Sans");
-    expect(CENSUS_CSS).toContain("Fraunces");
+  const neutral = censusStylesheet(NEUTRAL_THEME);
+  const radixia = censusStylesheet(RADIXIA_THEME);
+
+  it("has no brand-specific token names in the structural layer", () => {
+    // The structure must be re-themable by supplying values, never by editing
+    // rules. A `--magenta` here would mean a fork has to fork the CSS too.
+    for (const brandy of ["--magenta", "--violet", "--od-", "--dark-panel", "--link-hover"]) {
+      expect(STRUCTURE_CSS).not.toContain(brandy);
+    }
   });
 
-  it("supports dark mode, which the main site does", () => {
-    expect(CENSUS_CSS).toContain("prefers-color-scheme:dark");
+  it("resolves every var(--token) it uses, in every theme", () => {
+    // CSS does not error on an undefined custom property: the declaration is
+    // invalid at computed-value time and silently falls back to the initial
+    // value, so a colour turns black and nothing appears in any log. This test
+    // exists because exactly that happened — barChart kept filling bars with
+    // var(--magenta) after the rename, which renders them transparent.
+    // Scan the structural CSS *and* rendered markup: inline SVG carries
+    // fill="var(--accent)" attributes, and that is precisely where the bug was.
+    const rendered = [
+      STRUCTURE_CSS,
+      // Non-empty candidates so barChart actually emits its <rect fill=…>.
+      landingPage({
+        headline: HEADLINE,
+        candidates: [{ candidate_id: "mcp-json", n: 839 }],
+        runFinishedAt: "2026-08-05T10:26:00Z",
+      }),
+      resultsPage({
+        rows: [
+          { apex: "example.com", score: 85, band: "Connectable", assessed: 1, universe: "R" },
+        ] as never,
+      }),
+      checkPage({}),
+    ].join("\n");
+    const used = new Set(
+      [...rendered.matchAll(/var\((--[\w-]+)/g)].map((m) => (m[1] as string).slice(2)),
+    );
+    expect(used.size).toBeGreaterThan(10);
+    for (const theme of Object.values(THEMES)) {
+      for (const token of used) {
+        expect(Object.keys(theme.tokens), `${theme.id} is missing --${token}`).toContain(token);
+      }
+    }
   });
 
-  it("references fonts on the same origin, which the CSP requires", () => {
-    expect(CENSUS_CSS).toContain('url("/fonts/');
-    expect(CENSUS_CSS).not.toMatch(/url\("https?:/);
+  it("defaults to neutral, never to somebody else's brand", () => {
+    // A fork that deploys this must not ship Radixia's identity by accident.
+    expect(neutral).not.toContain("#d6117e");
+    expect(neutral).not.toContain("Fraunces");
+    expect(neutral).not.toContain("@font-face");
+    expect(page({ title: "x", description: "d", path: "/", body: "" })).not.toContain("Radixia");
+  });
+
+  it("supports dark mode in both themes", () => {
+    expect(neutral).toContain("prefers-color-scheme: dark");
+    expect(radixia).toContain("prefers-color-scheme: dark");
+  });
+
+  it("honours a forced light choice, not just the system preference", () => {
+    // The bug this fixes: the census read only prefers-color-scheme, so forcing
+    // light mode on radixia.ai and clicking through left the census dark.
+    expect(radixia).toContain(':root:not([data-theme="light"])');
+    expect(radixia).toContain(':root[data-theme="dark"]');
+  });
+
+  it("keeps button and card radii distinct", () => {
+    // Merging them was the most visible drift: buttons are 3px, cards 10px.
+    expect(RADIXIA_THEME.tokens["radius-btn"]).not.toBe(RADIXIA_THEME.tokens.radius);
+    expect(STRUCTURE_CSS).toContain("border-radius:var(--radius-btn)");
+  });
+
+  it("gives buttons a contrast-chosen background, not the raw accent", () => {
+    // White on --accent is 4.08:1 in Radixia's dark mode, under WCAG AA.
+    expect(STRUCTURE_CSS).toContain("background:var(--accent-btn)");
+    expect(STRUCTURE_CSS).not.toContain("background:var(--accent);color:#fff");
+  });
+
+  it("only references fonts on the same origin, which the CSP requires", () => {
+    expect(radixia).toContain('url("/fonts/');
+    expect(radixia).not.toMatch(/url\("https?:/);
   });
 });

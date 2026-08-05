@@ -9,6 +9,22 @@
     "enabled": true
   },
 
+  // Skin selection — see packages/core/src/theme.
+  //
+  // These are the ONLY two lines that make this deployment look like Radixia's.
+  // The code defaults to a neutral theme, so a fork that clones this repository
+  // and deploys it renders under its own name with system fonts rather than
+  // silently presenting itself as operated by Radixia.
+  //
+  // THEME_STORAGE_KEY is the localStorage key the main site's theme toggle
+  // writes (`SiteScripts.astro`). Same origin, so census pages can mirror a
+  // visitor's manual light/dark choice; without it they follow
+  // prefers-color-scheme only, which was the previous — and wrong — behaviour.
+  "vars": {
+    "CENSUS_THEME": "radixia",
+    "THEME_STORAGE_KEY": "theme"
+  },
+
   // Enabled 2026-08-05, with Marco's explicit approval.
   //
   // Route matching sends only /census/* here; every other path on the zone is

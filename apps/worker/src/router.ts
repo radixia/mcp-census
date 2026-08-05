@@ -6,7 +6,13 @@
  * client JS, and every response carries the full security header set.
  */
 
-import { CENSUS_BASE_PATH, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/core";
+import {
+  CENSUS_BASE_PATH,
+  censusUrl,
+  METHODOLOGY_VERSION,
+  resolveTheme,
+  themeScript,
+} from "@mcp-census/core";
 import { normaliseDomain, runCheck, withinRateLimit } from "./check.js";
 import type { Env } from "./env.js";
 import {
@@ -18,7 +24,7 @@ import {
   leaderboard,
   recentChanges,
 } from "./queries.js";
-import { esc } from "./web/layout.js";
+import { esc, type PageChrome } from "./web/layout.js";
 import {
   badgeSvg,
   changesPage,
@@ -28,7 +34,7 @@ import {
   resultsPage,
   staticPage,
 } from "./web/pages.js";
-import { CENSUS_CSS } from "./web/styles.js";
+import { censusStylesheet } from "./web/styles.js";
 
 const HTML = "text/html; charset=utf-8";
 
@@ -43,10 +49,11 @@ function cacheable(body: string, contentType: string, maxAge: number): Response 
   });
 }
 
-function notFound(message: string): Response {
+function notFound(message: string, chrome: PageChrome): Response {
   return new Response(
     staticPage({
-      title: "Not found — MCP Census",
+      chrome,
+      title: "Not found",
       description: "Not found.",
       path: "/",
       body: `<h1>Not found</h1><p>${esc(message)}</p><p><a href="${esc(censusUrl("/"))}">Back to the census</a></p>`,
@@ -64,8 +71,21 @@ export async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = relative(url.pathname);
 
+  const theme = resolveTheme(env.CENSUS_THEME);
+  const hasThemeKey = env.THEME_STORAGE_KEY !== undefined && env.THEME_STORAGE_KEY !== "";
+  const chrome = { theme, themeScript: theme.honourDataTheme && hasThemeKey };
+
   if (path === "/assets/census.css") {
-    return cacheable(CENSUS_CSS, "text/css; charset=utf-8", 86400);
+    return cacheable(censusStylesheet(theme), "text/css; charset=utf-8", 86400);
+  }
+
+  // Only served when a surrounding site actually has an override to mirror.
+  // Without the key there is nothing to read, so we 404 rather than ship a
+  // script that provably does nothing.
+  if (path === "/assets/theme.js") {
+    const key = env.THEME_STORAGE_KEY;
+    if (key === undefined || key === "") return new Response("Not found", { status: 404 });
+    return cacheable(themeScript(key), "text/javascript; charset=utf-8", 86400);
   }
 
   if (path === "/health") {
@@ -86,6 +106,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
     if (run === null) {
       return cacheable(
         landingPage({
+          chrome,
           headline: {
             assessed: 0,
             unassessed: 0,
@@ -106,7 +127,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
       candidateDistribution(env, run.id),
     ]);
     return cacheable(
-      landingPage({ headline: h, candidates, runFinishedAt: run.finished_at }),
+      landingPage({ chrome, headline: h, candidates, runFinishedAt: run.finished_at }),
       HTML,
       600,
     );
@@ -114,7 +135,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
   if (path === "/changes") {
     const [changes, adoption] = await Promise.all([recentChanges(env, 100), adoptionSeries(env)]);
-    return cacheable(changesPage({ changes, adoption }), HTML, 600);
+    return cacheable(changesPage({ chrome, changes, adoption }), HTML, 600);
   }
 
   if (path === "/results") {
@@ -129,7 +150,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
             limit: 500,
           });
     return cacheable(
-      resultsPage({ rows, ...(universe === undefined ? {} : { universe }) }),
+      resultsPage({ chrome, rows, ...(universe === undefined ? {} : { universe }) }),
       HTML,
       600,
     );
@@ -138,13 +159,14 @@ export async function route(request: Request, env: Env): Promise<Response> {
   if (path === "/check") {
     const raw = url.searchParams.get("domain");
     if (raw === null || raw.trim() === "") {
-      return cacheable(checkPage({}), HTML, 3600);
+      return cacheable(checkPage({ chrome }), HTML, 3600);
     }
 
     const apex = normaliseDomain(raw);
     if (apex === undefined) {
       return new Response(
         checkPage({
+          chrome,
           domain: raw,
           error: "That does not look like a domain name. Try example.com.",
         }),
@@ -158,6 +180,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
     if (!(await withinRateLimit(env, clientKey))) {
       return new Response(
         checkPage({
+          chrome,
           domain: apex,
           error: "That is a lot of checks in a short time. Try again in a few minutes.",
         }),
@@ -167,7 +190,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
     const result = await runCheck(env, apex);
     // Not cached at the edge: it is per-visitor and already cached in KV.
-    return new Response(checkPage({ domain: apex, result }), {
+    return new Response(checkPage({ chrome, domain: apex, result }), {
       status: 200,
       headers: { "content-type": HTML, "cache-control": "private, no-store" },
     });
@@ -175,17 +198,19 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
   if (path.startsWith("/d/")) {
     const apex = normaliseDomain(decodeURIComponent(path.slice(3)));
-    if (apex === undefined) return notFound("That is not a domain name we could parse.");
+    if (apex === undefined) return notFound("That is not a domain name we could parse.", chrome);
 
     const detail = await domainDetail(env, apex);
     if (detail === null) {
       return notFound(
         `${apex} is not in the census yet. You can check it on the check page instead.`,
+        chrome,
       );
     }
 
     return cacheable(
       domainPage({
+        chrome,
         apex: detail.apex,
         score: detail.score,
         band: detail.band,
@@ -231,17 +256,18 @@ export async function route(request: Request, env: Env): Promise<Response> {
   }
 
   const staticRoute = STATIC_PAGES[path];
-  if (staticRoute !== undefined) return cacheable(staticRoute(), HTML, 3600);
+  if (staticRoute !== undefined) return cacheable(staticRoute(chrome), HTML, 3600);
 
-  return notFound("There is no page at that address.");
+  return notFound("There is no page at that address.", chrome);
 }
 
 const REPO = "https://github.com/radixia/mcp-census";
 
-const STATIC_PAGES: Record<string, () => string> = {
-  "/methodology": () =>
+const STATIC_PAGES: Record<string, (chrome: PageChrome) => string> = {
+  "/methodology": (chrome) =>
     staticPage({
-      title: "Methodology — MCP Census",
+      chrome,
+      title: "Methodology",
       description: "How the MCP Census measures, scores, and what weakens its own findings.",
       path: "/methodology",
       body: `
@@ -292,9 +318,10 @@ registry-derived, so it measures organisations that both run <em>and</em> regist
 <a href="${REPO}/tree/main/docs/DECISIONS">the decisions and why</a></p>`,
     }),
 
-  "/data": () =>
+  "/data": (chrome) =>
     staticPage({
-      title: "Data — MCP Census",
+      chrome,
+      title: "Data",
       description: "The raw per-domain dataset, openly licensed and reproducible.",
       path: "/data",
       body: `
@@ -319,9 +346,10 @@ snapshots; corrections appear in the next release rather than rewriting a citabl
 <a href="${REPO}">The code</a></p>`,
     }),
 
-  "/crawler": () =>
+  "/crawler": (chrome) =>
     staticPage({
-      title: "Crawler — MCP Census",
+      chrome,
+      title: "Crawler",
       description: "What the MCP Census crawler does, and how to be excluded from it.",
       path: "/crawler",
       body: `
@@ -365,9 +393,10 @@ wrong about a named domain is the failure mode we care most about avoiding.</p>
 <p><a href="${REPO}/blob/main/docs/CRAWLER-ETHICS.md">The full ethics document</a></p>`,
     }),
 
-  "/agntcon-2026": () =>
+  "/agntcon-2026": (chrome) =>
     staticPage({
-      title: "AGNTCon + MCPCon Europe 2026 — MCP Census",
+      chrome,
+      title: "AGNTCon + MCPCon Europe 2026",
       description: "How the AGNTCon + MCPCon Europe sponsors and speakers score.",
       path: "/agntcon-2026",
       body: `
