@@ -11,6 +11,8 @@
  * If that ever changes, these assertions are the canary.
  */
 
+import { NOINDEX_HEADER, SEARCH_INDEXING_ENABLED } from "@mcp-census/core";
+
 /**
  * Deliberately allows no inline script and no inline stylesheet.
  *
@@ -47,12 +49,20 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "x-frame-options": "DENY",
 };
 
-/** Apply the full set to a response without clobbering its existing headers. */
+/**
+ * Apply the full set to a response without clobbering its existing headers.
+ *
+ * Also applies `X-Robots-Tag` while `SEARCH_INDEXING_ENABLED` is false. Doing it
+ * here rather than per route means it covers every response — pages, the
+ * stylesheet, badge SVGs, 404s — with no way to add a route that forgets it.
+ */
 export function withSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
     headers.set(name, value);
   }
+  if (!SEARCH_INDEXING_ENABLED) headers.set("x-robots-tag", NOINDEX_HEADER);
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

@@ -45,6 +45,8 @@ export {
   CENSUS_BASE_PATH,
   CENSUS_BASE_URL,
   censusUrl,
+  NOINDEX_HEADER,
+  SEARCH_INDEXING_ENABLED,
   VANITY_DOMAIN,
 } from "./config/site.js";
 export {

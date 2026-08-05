@@ -9,7 +9,7 @@
  * constant and nothing here concatenates a URL.
  */
 
-import { censusUrl } from "@mcp-census/core";
+import { censusUrl, SEARCH_INDEXING_ENABLED } from "@mcp-census/core";
 
 /** Minimal HTML escaping. Every interpolated value goes through this. */
 export function esc(value: unknown): string {
@@ -49,6 +49,7 @@ export function page(options: PageOptions): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(options.title)}</title>
 <meta name="description" content="${esc(options.description)}">
+${SEARCH_INDEXING_ENABLED ? "" : '<meta name="robots" content="noindex, nofollow, noarchive">'}
 <link rel="canonical" href="${esc(canonical)}">
 <link rel="stylesheet" href="${esc(censusUrl("/assets/census.css"))}">
 <meta property="og:title" content="${esc(options.title)}">
