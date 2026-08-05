@@ -93,7 +93,12 @@ export function page(options: PageOptions): string {
 <title>${esc(fullTitle)}</title>
 <meta name="description" content="${esc(options.description)}">
 ${SEARCH_INDEXING_ENABLED ? "" : '<meta name="robots" content="noindex, nofollow, noarchive">'}
-<link rel="canonical" href="${esc(canonical)}">
+<link rel="canonical" href="${esc(canonical)}">${
+    // Only when the theme provides one. A browser given no icon asks for
+    // /favicon.ico, which the surrounding site does not serve, so every page
+    // logged a console 404.
+    brand.faviconPath === undefined ? "" : `\n<link rel="icon" href="${esc(brand.faviconPath)}">`
+  }
 <link rel="stylesheet" href="${esc(censusUrl("/assets/census.css"))}">
 <meta property="og:title" content="${esc(fullTitle)}">
 <meta property="og:description" content="${esc(options.description)}">

@@ -164,6 +164,10 @@ ${literal(dark, "    ")}
     repoUrl: "https://github.com/radixia/mcp-census",
     // radixia.ai is in this dataset and never excluded from it.
     inOwnDataset: true,
+    // The main site serves this and declares it as both icon and apple-touch-icon.
+    // /favicon.ico does not exist there, which is what browsers ask for when a page
+    // declares nothing, so every census page was logging a 404.
+    faviconPath: "/favicon.png",
     cta: CTA,
   },
 };

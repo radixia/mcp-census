@@ -72,9 +72,9 @@ export const NEUTRAL_THEME: CensusTheme = {
   },
   branding: {
     productName: "MCP Census",
-    // No operator and no CTA by default: a fork should name itself, and saying
-    // nothing is more honest than inheriting somebody else's name or sales pitch.
-    // Both render as absent rather than as placeholders.
+    // No operator, no CTA and no favicon by default: a fork should name itself, and
+    // saying nothing is more honest than inheriting somebody else's name, sales
+    // pitch or mark. All three render as absent rather than as placeholders.
     repoUrl: "https://github.com/radixia/mcp-census",
     inOwnDataset: false,
   },

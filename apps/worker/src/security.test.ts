@@ -45,9 +45,56 @@ describe("worker responses", () => {
     expect(response.headers.get("strict-transport-security")).toContain("includeSubDomains");
   });
 
+  it("does not ask for HSTS preload", async () => {
+    // Marco's decision, now and at launch: preload entry is easy to get, hard to
+    // reverse, and commits every present and future subdomain. The zone strips it
+    // anyway, so sending it only created a gap between the source and the wire.
+    const response = await get("/census/");
+    expect(response.headers.get("strict-transport-security")).not.toContain("preload");
+  });
+
   it("refuses to serve census content outside the routed prefix", async () => {
     expect((await get("/")).status).toBe(404);
     expect((await get("/blog/some-post")).status).toBe(404);
+  });
+
+  it("redirects /census to /census/ rather than serving the page twice", async () => {
+    // `/census` is what people type and share, and before it had its own route
+    // pattern it never reached the Worker at all: it fell through to the static
+    // Pages build and returned that site's 404. Serving the landing page at both
+    // addresses would have been the other wrong answer.
+    const response = await handle(new Request("https://www.radixia.ai/census"));
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe("https://www.radixia.ai/census/");
+  });
+
+  it.each(Object.keys(SECURITY_HEADERS))("sets %s on the /census redirect too", async (header) => {
+    // A redirect is a response like any other. Constructing it by hand rather than
+    // with Response.redirect is what makes this possible: that helper returns a
+    // response whose headers cannot be decorated.
+    const response = await handle(new Request("https://www.radixia.ai/census"));
+    expect(response.headers.get(header)).toBe(SECURITY_HEADERS[header]);
+  });
+
+  it("carries X-Robots-Tag on the redirect while indexing is off", async () => {
+    const response = await handle(new Request("https://www.radixia.ai/census"));
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
+  });
+
+  it("does not redirect /census/ itself, so there is no loop", async () => {
+    const response = await get("/census/");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("does not redirect a path that merely starts with the prefix", async () => {
+    // Exact equality, not startsWith: /censusfoo must never be bounced into our
+    // namespace. It cannot reach the Worker in production either — the route
+    // patterns are `/census` exactly and `/census/*` — but the guard should not
+    // depend on that.
+    const response = await handle(new Request("https://www.radixia.ai/censusfoo"));
+    expect(response.status).not.toBe(301);
+    expect(response.headers.get("location")).toBeNull();
   });
 
   it("rejects unsafe methods", async () => {

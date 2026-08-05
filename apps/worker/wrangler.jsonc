@@ -27,13 +27,23 @@
 
   // Enabled 2026-08-05, with Marco's explicit approval.
   //
-  // Route matching sends only /census/* here; every other path on the zone is
-  // served exactly as before, and the static radixia.ai build is untouched. The
-  // zone carries no other Workers Routes and no Transform Rules, and
+  // Route matching sends only /census and /census/* here; every other path on the
+  // zone is served exactly as before, and the static radixia.ai build is untouched.
+  // The zone carries no other Workers Routes and no Transform Rules, and
   // mcp.radixia.ai is attached as a Custom Domain, so the two mechanisms cannot
   // collide. The apex -> www Redirect Rule fires before Workers, which is why
   // every URL we emit is already on the www host.
-  "routes": [{ "pattern": "www.radixia.ai/census/*", "zone_name": "radixia.ai" }],
+  //
+  // Two patterns, because `/census/*` does not match the bare path `/census` — and
+  // the bare path is the one people actually use, since nobody types, prints,
+  // speaks or tweets a trailing slash. Without the first pattern that request never
+  // reached the Worker at all: it fell through to the static Pages build, which
+  // answered with its own "404 — Radixia" page. `handle()` redirects it to
+  // `/census/` rather than serving the landing page at two addresses.
+  "routes": [
+    { "pattern": "www.radixia.ai/census", "zone_name": "radixia.ai" },
+    { "pattern": "www.radixia.ai/census/*", "zone_name": "radixia.ai" }
+  ],
 
   // Historical note, kept because it is the reason the above is safe.
   //

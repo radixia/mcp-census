@@ -6,9 +6,21 @@
  * sees, so those hashes can never cover us — we must emit a complete set
  * ourselves, matching the existing site's posture in spirit.
  *
- * As of 2026-08-04 the zone carries no Response Header Transform Rules and all
- * Managed Transforms are disabled, so nothing downstream rewrites what we send.
- * If that ever changes, these assertions are the canary.
+ * This file used to claim that nothing downstream rewrites what we send. That was
+ * true of Transform Rules and is not true in general: **HSTS is governed at the
+ * zone**, under SSL/TLS → Edge Certificates, and the zone's setting wins over
+ * whatever the origin emits. Observed on 2026-08-05, the Worker sent
+ * `max-age=31536000; includeSubDomains; preload` and the client received the same
+ * value with `preload` stripped.
+ *
+ * So what this file sends has to match the zone's configuration. A mismatch is
+ * invisible until somebody diffs the wire against the source, and a header that
+ * silently does not mean what the code says is worse than one that is absent.
+ *
+ * `preload` is deliberately gone, by Marco's decision, now and at launch. Entry
+ * into the browser preload list is easy to obtain and effectively irreversible,
+ * and it commits every present and future subdomain of radixia.ai — including ones
+ * nobody has thought of yet.
  */
 
 import { NOINDEX_HEADER, SEARCH_INDEXING_ENABLED } from "@mcp-census/core";
@@ -41,7 +53,9 @@ export function contentSecurityPolicy(): string {
 
 export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "content-security-policy": contentSecurityPolicy(),
-  "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+  // No `preload`: see the docblock. The zone would strip it anyway, so sending it
+  // only created a gap between the source and the wire.
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "permissions-policy": "geolocation=(), microphone=(), camera=(), payment=(), usb=()",

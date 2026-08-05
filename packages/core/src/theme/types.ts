@@ -57,6 +57,15 @@ export interface ThemeBranding {
    */
   readonly operator?: { readonly name: string; readonly url: string };
   /**
+   * Host-root path to the operator's icon, e.g. `/favicon.png`.
+   *
+   * Not a census URL, and deliberately outside `censusUrl`: the file is served by
+   * whatever site surrounds us, not by this Worker. Absent by default — a fork
+   * must not inherit somebody else's mark, and a browser falling back to
+   * `/favicon.ico` is a console error rather than a wrong logo.
+   */
+  readonly faviconPath?: string;
+  /**
    * An optional call to action, shown after the reader has learned something
    * about a domain.
    *

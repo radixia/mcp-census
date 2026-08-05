@@ -510,3 +510,38 @@ describe("the growth chart", () => {
     expect(land(GROWTH)).toMatch(/role="img" aria-label="[^"]+"/);
   });
 });
+
+describe("the favicon", () => {
+  it("declares the operator's icon under the radixia theme", () => {
+    // Without any icon a browser asks for /favicon.ico, which the surrounding site
+    // does not serve, so every census page logged a console 404.
+    const html = page({
+      title: "x",
+      description: "d",
+      path: "/",
+      body: "",
+      chrome: { theme: RADIXIA_THEME, themeScript: false },
+    });
+    const icons = html.match(/<link rel="icon"[^>]*>/g) ?? [];
+    expect(icons).toHaveLength(1);
+    expect(icons[0]).toContain('href="/favicon.png"');
+  });
+
+  it("declares none under the neutral theme", () => {
+    // A fork must not inherit somebody else's mark. Absent, not a placeholder.
+    const html = page({ title: "x", description: "d", path: "/", body: "" });
+    expect(html).not.toContain('rel="icon"');
+  });
+
+  it("points outside the census prefix, because the surrounding site serves it", () => {
+    const html = page({
+      title: "x",
+      description: "d",
+      path: "/",
+      body: "",
+      chrome: { theme: RADIXIA_THEME, themeScript: false },
+    });
+    expect(html).toContain('<link rel="icon" href="/favicon.png">');
+    expect(html).not.toContain('rel="icon" href="/census/');
+  });
+});
