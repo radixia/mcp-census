@@ -1,0 +1,24 @@
+{
+  "name": "@mcp-census/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The census Worker: HTTP routes, queue consumer and cron, served at www.radixia.ai/census/*",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@mcp-census/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

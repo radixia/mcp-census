@@ -1,0 +1,32 @@
+packages:
+  - packages/*
+  - apps/worker
+
+# esbuild backs Vitest's transform; workerd is the Workers runtime wrangler runs
+# locally. Both are first-party binaries for tools we already depend on.
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# Single source of truth for tool versions across every workspace package.
+# Resolved 2026-08-04.
+catalog:
+  "@types/node": ^26.1.2
+  typescript: ^7.0.2
+  vitest: ^4.1.10
+  "@biomejs/biome": ^2.5.7
+  wrangler: ^4.118.0
+  "@cloudflare/vitest-pool-workers": ^0.20.1
+  "@cloudflare/workers-types": ^5.20260804.1
+
+minimumReleaseAgeExclude:
+  - '@biomejs/biome@2.5.7'
+  - '@biomejs/cli-darwin-arm64@2.5.7'
+  - '@biomejs/cli-darwin-x64@2.5.7'
+  - '@biomejs/cli-linux-arm64-musl@2.5.7'
+  - '@biomejs/cli-linux-arm64@2.5.7'
+  - '@biomejs/cli-linux-x64-musl@2.5.7'
+  - '@biomejs/cli-linux-x64@2.5.7'
+  - '@biomejs/cli-win32-arm64@2.5.7'
+  - '@biomejs/cli-win32-x64@2.5.7'
+  - '@cloudflare/workers-types@5.20260804.1'

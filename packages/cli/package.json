@@ -1,0 +1,38 @@
+{
+  "name": "mcpcensus",
+  "version": "0.1.0",
+  "description": "Check whether an AI agent could discover and connect to an MCP server for a domain.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "mcpcensus": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "census",
+    "agent",
+    "discovery"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/radixia/mcp-census.git",
+    "directory": "packages/cli"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mcp-census/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mcp-census",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "e62abad0c118b8a409575354eec284d6",
+  "observability": {
+    "enabled": true
+  }
+
+  // Routing is deliberately commented out until Phase 6.
+  //
+  // The zone was inspected on 2026-08-04 and is clean: no Transform Rules, all
+  // Managed Transforms off, and no Workers Routes at all. `radixia.ai` is a
+  // fully static site and this Worker must never touch its build pipeline.
+  // Deploying the route below is what puts us in front of live traffic, so it
+  // stays inert until the pages exist and the header test passes.
+  //
+  // "routes": [
+  //   { "pattern": "www.radixia.ai/census/*", "zone_name": "radixia.ai" }
+  // ],
+
+  // Bindings land in Phase 3, which is also when Workers Paid ($5/mo) must be
+  // activated: D1, Queues and Cron Triggers all require it. The subscription is
+  // separate from the zone plan, which is free and stays free.
+  //
+  // "d1_databases":  [{ "binding": "DB", "database_name": "mcp-census", "database_id": "" }],
+  // "r2_buckets":    [{ "binding": "ARTIFACTS", "bucket_name": "mcp-census-artifacts" }],
+  // "kv_namespaces": [{ "binding": "SCAN_CACHE", "id": "" }],
+  // "queues": {
+  //   "producers": [{ "binding": "CRAWL_QUEUE", "queue": "mcp-census-crawl" }],
+  //   "consumers": [{ "queue": "mcp-census-crawl", "max_batch_size": 10 }]
+  // },
+  // "triggers": { "crons": ["0 3 * * *"] }
+}

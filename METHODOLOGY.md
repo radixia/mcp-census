@@ -1,0 +1,208 @@
+# Methodology
+
+**Version `0.1.0-draft` · last revised 2026-08-05**
+
+This document is the single most important artifact in the project. It is
+versioned, and every published row carries the methodology version that produced
+it. No check may be added, removed, or have its semantics changed without a
+revision here and a bump to `METHODOLOGY_VERSION`.
+
+> **Status: draft.** No scores have been published. The scoring formula below is
+> published *before* any score, deliberately, so that it can be argued with before
+> it is used. The population and headline framing are still under review — see
+> [Open questions](#open-questions).
+
+---
+
+## Conflict of interest — read this first
+
+**This census is run by [Radixia S.r.l.](https://www.radixia.ai), a commercial AI
+and cloud consulting firm, and `radixia.ai` is included in the measured
+population.**
+
+Radixia sells services related to the thing being measured. It also already
+implements most of the agent-facing surface this census scores: an MCP server card,
+`llms.txt`, Markdown content negotiation, structured data, a public read-only MCP
+server at `mcp.radixia.ai`, WebMCP, and `security.txt`. It will therefore score
+well, and we have an obvious interest in the subject appearing important.
+
+We chose to include our own domain rather than exclude it. Prior work in this space
+tends to exclude the authors' own properties; excluding ourselves precisely where we
+happen to pass would read as less honest, not more. Readers should discount our
+own row accordingly, and everything needed to verify it — the raw dataset, the
+probe code, the frozen input lists — is public.
+
+---
+
+## What this measures
+
+For each domain in a frozen population: **could an AI agent, starting from nothing
+but the domain name, discover and connect to an MCP server for that brand?**
+
+It is a census — a defined, reproducible population, measured per domain, reported
+as a small number of defended statistics. It is not a general-purpose site audit,
+and it is emphatically **not** a security assessment. See
+[docs/CRAWLER-ETHICS.md](docs/CRAWLER-ETHICS.md) for what we do and do not touch.
+
+## The population
+
+Frozen input lists live in `data/universe/`, each committed with its provenance and
+download date. Nothing is measured that is not in a committed list.
+
+| Tag | Universe | Status |
+|---|---|---|
+| A | Global top domains | not yet frozen — see [Open questions](#open-questions) |
+| B | Europe | not yet frozen |
+| C | Italy | not yet frozen |
+| D | AGNTCon + MCPCon Europe 2026 sponsors and speakers | not yet frozen |
+
+## Protocol context
+
+Measurement is against the MCP specification revision `2026-07-28`, published
+2026-07-28 and verified against primary sources on 2026-08-04. Full findings,
+with URLs and access dates, are in [docs/SPEC-NOTES.md](docs/SPEC-NOTES.md).
+
+Two facts shape every check below:
+
+1. **There are two protocol eras.** The `initialize` handshake was removed in
+   `2026-07-28` (SEP-2575) and replaced by `server/discover`. Servers on
+   `2025-11-25` and earlier still expect `initialize`. We probe for both and
+   report the split.
+2. **No server-card discovery mechanism has been standardised.** We probe every
+   published candidate and record which one responded. See
+   [ADR 0001](docs/DECISIONS/0001-probe-every-candidate-path.md).
+
+## The checks
+
+Each check is a pure function returning `{ id, status: 'pass'|'fail'|'skip'|'error', evidence, latencyMs }`.
+Check IDs are stable and appear as columns in the published dataset; they survive
+methodology revisions.
+
+| ID | Name | Method | Normative basis |
+|---|---|---|---|
+| `D1` | MCP server card | `GET` each candidate path; record which responded and whether it parses | none — all candidates are drafts or historical |
+| `D2` | DNS discovery | `TXT` lookup at `_mcp.<apex>` | individual IETF draft, no standing |
+| `D3` | Conventional endpoint | `GET`/`HEAD` conventional paths and subdomains; **`405` is the positive signal** | Streamable HTTP transport |
+| `D4` | OAuth protected resource | `GET` root and path-inserted forms; parse `WWW-Authenticate` on `401` | **RFC 9728 — MUST** |
+| `D5` | Handshake | unauthenticated JSON-RPC `server/discover`, falling back to `initialize`. Runs only if D1–D4 produced an endpoint | spec |
+| `D6` | Tool listing | JSON-RPC `tools/list`, read-only. Runs only if D5 succeeded | spec |
+| `Q1` | Tool surface shape | tool count, description presence and length distribution, parameter description coverage | — |
+| `F1` | Text fallbacks | `llms.txt`, `llms-full.txt`, `AGENTS.md` | community convention |
+| `F2` | AI crawler posture | parse `robots.txt`; per-agent allow/deny for major AI crawlers | robots.txt |
+| `S1` | Shadow MCP | join against registry data; see [ADR 0003](docs/DECISIONS/0003-namespace-verification-over-fuzzy-matching.md) | — |
+
+Notes that matter for interpretation:
+
+- **`D4` is the only check with a MUST behind it.** An MCP server is *required* to
+  implement RFC 9728 Protected Resource Metadata. A `401` carrying
+  `WWW-Authenticate: ... resource_metadata=...` is a positive detection, not a
+  failure.
+- **`D3` alone is weak evidence.** A `405` at `/mcp` is consistent with a modern
+  MCP endpoint but also with any other POST-only endpoint. It is used to *locate*
+  an endpoint for D5, never as a confirmed MCP server on its own. See
+  [ADR 0002](docs/DECISIONS/0002-d3-detects-405.md).
+- **`D5` and `D6` are the only requests that are not `GET`/`HEAD`**, and they run
+  only against an endpoint that discovery already found, never with credentials.
+- A domain disallowing us in `robots.txt` is recorded as `skipped_by_robots` and
+  reported as its own category, never folded into failures.
+
+## Scoring
+
+**In one sentence: a domain earns 70 of 100 points for being connectable at all,
+and the remaining 30 for the quality of what an agent finds once connected.**
+
+| Component | Points | Awarded when |
+|---|---|---|
+| Confirmed connection | 70 | `D5` succeeded — a real MCP server answered |
+| Discovery evidence only | 35 | any of `D1`–`D4` produced evidence but `D5` did not confirm |
+| Tool surface quality | 15 | `D6`/`Q1`: tools listed, described, parameters documented |
+| Text fallbacks | 10 | `F1` |
+| Declared crawler posture | 5 | `F2`: an explicit per-agent policy either way |
+
+Discovery is weighted far above everything else because that is the census
+question. A domain an agent cannot find has no partial credit worth arguing about,
+and the 35-point tier exists only to distinguish "published something" from
+"published nothing".
+
+Scoring is deterministic: the same evidence always produces the same score.
+
+| Band | Score |
+|---|---|
+| Absent | 0 |
+| Text-only | 1–30 |
+| Discoverable | 31–69 |
+| Connectable | 70–89 |
+| Agent-ready | 90–100 |
+
+## Reproducibility
+
+A third party must be able to re-run this and get comparable numbers:
+
+- Input lists are frozen, committed, and carry provenance and download date.
+- The methodology version and candidate-set version are recorded on every row.
+- Scoring is deterministic and depends on nothing but the recorded evidence.
+- Raw response artifacts are retained so a score can be recomputed without
+  re-crawling.
+- Releases are frozen snapshots under `data/releases/<date>/`.
+
+Code is Apache-2.0. Data is CC-BY-4.0.
+
+## Limitations
+
+The things that weaken our own findings. This section is not a formality.
+
+1. **The base rate may be so low that per-domain statistics are close to
+   meaningless.** Cloudflare measured 200,000 domains in April 2026 and found MCP
+   Server Cards on fewer than 15. If our numbers agree, most of our per-country
+   and per-sector breakdowns will be zeros, and differences between them will be
+   noise rather than signal. We will report the zeros rather than dressing them up.
+2. **A negative is not proof of absence.** A brand may run an MCP server that is
+   discoverable only through a client marketplace, a registry entry, a private
+   agreement, or documentation. We measure *autonomous discoverability from the
+   domain name*, which is narrower than "has an MCP server".
+3. **We measure the front door only.** Geo-routing, bot mitigation, WAF rules and
+   CDN behaviour mean our view from one vantage point may differ from a real
+   agent's. A `403` may be about us, not about the domain's readiness.
+4. **`robots.txt` exclusions bias the sample**, and in a direction we cannot
+   correct for: domains with sophisticated crawler policies are plausibly also the
+   ones with sophisticated agent policies.
+5. **`D3`'s `405` signal has false positives** — any POST-only endpoint at a
+   conventional path looks the same.
+6. **Discovery candidates are a moving target.** We probe eight; a mechanism
+   invented after our freeze date will read as absent. SEP-2127 could land between
+   our run and our publication.
+7. **Shadow MCP misclassifies servers written by employees under personal
+   namespaces** as third-party. This is why the claim is "you don't know about it",
+   not "you didn't write it".
+8. **Registry coverage is partial and unstable.** The official registry is in
+   preview with no durability guarantee; Smithery entries cannot be
+   namespace-verified the same way; Glama and PulseMCP are not yet assessed.
+9. **The authors have a commercial interest** in this subject mattering. See the
+   conflict-of-interest note above.
+10. **Input-list licensing is unresolved.** See below.
+
+## Open questions
+
+These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
+
+- **Which universes to freeze.** Cloudflare already measures MCP discovery across
+  the 200,000 most visited domains weekly and publishes the aggregates. Re-running
+  a global top-domain universe would largely duplicate that, so the populations we
+  freeze should be the ones nobody covers — Europe, Italy, and the conference
+  cohort — plus whatever is needed as a comparable baseline. Not yet settled, and
+  it must be before any list is frozen.
+- **Input-list licensing.** Tranco aggregates Cloudflare Radar data under **CC
+  BY-NC 4.0** (non-commercial), while we intend to publish derived data under
+  CC-BY-4.0 from a commercial site. This must be resolved before any universe is
+  frozen, because re-freezing later destroys reproducibility.
+- **`draft-morrison-mcp-dns-discovery` record format** is unverified, so `D2`
+  currently covers only the `draft-serra` format.
+- **Whether to name domains** in the public leaderboard. Current plan: yes, with a
+  correction route and a rescan action on every per-domain page.
+
+## Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| `0.1.0-draft` | 2026-08-04 | Initial draft. Checks defined, scoring published, nothing measured. |
+| `0.1.0-draft` | 2026-08-05 | Editorial only, no change to checks or scoring. Open questions reworded to scope rather than framing. |

@@ -1,0 +1,23 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+
+# Pilot and analysis output. Published snapshots live in data/releases/ and are
+# committed deliberately, never dropped here.
+out/
+tmp/
+*.local.csv
+
+# Internal working notes: competitive analysis and undecided strategy.
+# CLAUDE.md is public and carries only durable engineering context.
+NOTES.local.md
+*.local.md
+
+.DS_Store
+*.log

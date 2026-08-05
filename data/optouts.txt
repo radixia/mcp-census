@@ -1,0 +1,12 @@
+# Domains excluded from the census at their owner's request.
+#
+# One apex domain per line. Comments start with '#'. An entry covers the domain
+# and all of its subdomains. Read at crawl start-up; an entry here costs zero
+# requests, not one.
+#
+# To be added: email the address in docs/CRAWLER-ETHICS.md, disallow the
+# MCPCensus user-agent in your robots.txt, or open a PR against this file.
+# Opt-outs are honoured within 24 hours.
+#
+# Domains that disallow us via robots.txt are recorded as `skipped_by_robots` at
+# crawl time and do not need to appear here.

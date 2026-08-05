@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    // `types: []` keeps Node and Workers globals out: this package must compile
+    // identically for the CLI, the Worker and a plain Node pilot script.
+    //
+    // DOM is here only for the WHATWG `URL` parser, which is a global in every
+    // one of those runtimes but is not part of the ECMAScript lib. It also
+    // exposes `fetch`; core must stay I/O-free, so any use of it here is a bug —
+    // probes take their fetch implementation as an argument.
+    "types": [],
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}
