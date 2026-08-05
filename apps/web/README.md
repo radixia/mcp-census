@@ -1,27 +1,22 @@
 # web
 
-Templates and static assets served by the Worker. Not a workspace package and not a
-build step: the Worker imports from here directly and renders server-side.
+The templates and stylesheet now live with the Worker, at
+`apps/worker/src/web/`.
 
-There is no SPA framework and no client-side router. Thousands of per-domain
-permalinks need to be crawlable and fast, so pages are server-rendered from D1 with
-the Cache API and `stale-while-revalidate`. Charts are inline SVG generated on the
-server — no chart library, and no client JS beyond what the scan form on
-`/census/check` strictly needs.
+They were moved there because `apps/web` was not a workspace package, so
+importing it from the Worker broke both `rootDir` and the resolution of
+`@mcp-census/core`. The alternatives were to make this a fourth package or to
+put the templates where their only consumer already is. The second is fewer
+moving parts, which is the standing tie-breaker for this project.
 
-Every page must render with JavaScript disabled.
+- `apps/worker/src/web/styles.ts` — the stylesheet, served at
+  `/census/assets/census.css`. An external sheet rather than inline style,
+  because the Worker's CSP is `style-src 'self'` with no `unsafe-inline`.
+  Tokens are lifted from the live radixia.ai so the census reads as part of the
+  site.
+- `apps/worker/src/web/layout.ts` — the HTML shell, escaping, and inline-SVG
+  charts. No chart library.
+- `apps/worker/src/web/pages.ts` — one pure function per page.
 
-The visual design mirrors the existing radixia.ai design system — tokens, light and
-dark, type scale — rather than inventing a new look. This has to read as part of the
-site, not a bolt-on. Fetch a couple of live pages and match them.
-
-## Content Security Policy
-
-The Worker emits its own complete security headers, because the main site's
-build-time CSP hashes are computed from pages the build produces and can never cover
-Worker-rendered HTML. The policy allows **no inline script and no inline style** —
-see `apps/worker/src/security.ts`. Stylesheets and scripts must be served as
-separate `self` assets. Inline `<svg>` is markup rather than an image and is
-unaffected.
-
-Nothing here yet; pages land in Phase 6.
+Every page is server-rendered and must work with JavaScript disabled; there is
+no client script anywhere, and a test asserts it stays that way.

@@ -1,0 +1,359 @@
+/**
+ * The census pages.
+ *
+ * Each is a pure function from data to HTML. No framework, no client JS, no
+ * inline style — the Worker's CSP forbids all three, and every page must render
+ * with JavaScript disabled.
+ */
+
+import { CENSUS_VERSION, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/core";
+
+import { barChart, esc, page, statGrid, statusPill } from "./layout.js";
+
+/** Provenance of each candidate path, so the fragmentation chart is legible. */
+const CANDIDATE_LABELS: Record<string, string> = {
+  "mcp-json": "/.well-known/mcp.json",
+  "mcp-server-card-json": "/.well-known/mcp/server-card.json",
+  "ai-catalog": "/.well-known/ai-catalog.json",
+  "mcp-bare": "/.well-known/mcp",
+  "mcp-server-serra": "/.well-known/mcp-server",
+  "server-card-endpoint-relative": "<endpoint>/server-card",
+  "dns-txt-serra": "_mcp TXT record",
+};
+
+const CANDIDATE_NOTES: Record<string, string> = {
+  "mcp-json": "superseded",
+  "mcp-server-card-json": "in no specification",
+  "ai-catalog": "current direction",
+  "mcp-bare": "never adopted",
+  "mcp-server-serra": "draft",
+  "server-card-endpoint-relative": "draft",
+  "dns-txt-serra": "draft",
+};
+
+export interface HeadlineData {
+  readonly assessed: number;
+  readonly unassessed: number;
+  readonly anyDiscovery: number;
+  readonly card: number;
+  readonly confirmed: number;
+  readonly nothing: number;
+}
+
+const pct = (n: number, d: number): string => (d === 0 ? "—" : `${Math.round((n / d) * 100)}%`);
+
+export function landingPage(data: {
+  headline: HeadlineData;
+  candidates: Array<{ candidate_id: string; n: number }>;
+  runFinishedAt: string | null;
+}): string {
+  const h = data.headline;
+  const cardTotal = data.candidates.reduce((n, c) => n + c.n, 0);
+
+  const body = `
+<p class="eyebrow">A census of the agent-reachable web</p>
+<h1>The ecosystem built the servers and forgot the front door.</h1>
+
+<div class="headline">
+  <span class="big">${pct(h.nothing, h.assessed)}</span>
+  <p class="said">of the organisations that <strong>provably run an MCP server</strong> publish
+  nothing an agent could use to find it. ${h.nothing} of ${h.assessed} measured.</p>
+</div>
+
+<p class="lede">We do not ask how many big websites have an MCP server — that number is
+approximately zero and already well measured. We ask the question nobody has answered: of the
+organisations that demonstrably run one, how many can an agent actually reach?</p>
+
+${statGrid([
+  { n: String(h.assessed), k: "organisations assessed" },
+  { n: pct(h.card, h.assessed), k: "publish a server card" },
+  { n: pct(h.confirmed, h.assessed), k: "answer a handshake" },
+  { n: String(h.unassessed), k: "not assessable" },
+])}
+
+<p><a class="btn" href="${esc(censusUrl("/check"))}">Check your own domain</a></p>
+
+<h2>Nobody implements where the specification is heading</h2>
+<p>Every card we find is on one path or another, and the paths do not agree. The most-deployed
+one was superseded in flight; the next appears in <strong>no specification document at all</strong>
+and propagated through blog posts.</p>
+${
+  cardTotal === 0
+    ? '<p class="note">No cards found in this run yet.</p>'
+    : `<figure>${barChart(
+        data.candidates.map((c) => ({
+          label: CANDIDATE_LABELS[c.candidate_id] ?? c.candidate_id,
+          value: c.n,
+          note:
+            CANDIDATE_NOTES[c.candidate_id] === undefined
+              ? ""
+              : `· ${CANDIDATE_NOTES[c.candidate_id]}`,
+        })),
+      )}<figcaption>Server cards found, by the path that answered. ${cardTotal} in total.</figcaption></figure>`
+}
+
+<h2>How to read this</h2>
+<p>Every number here excludes domains we were not permitted or not able to measure — a domain that
+blocked our crawler is reported as its own category, never as a zero. The population is
+organisations the official MCP Registry proves run a server, which is plausibly the most
+MCP-engaged population that exists; that makes a low reachability figure a
+<em>conservative</em> one.</p>
+<p><a href="${esc(censusUrl("/methodology"))}">Read the methodology</a> ·
+<a href="${esc(censusUrl("/data"))}">Get the data</a> ·
+<a href="${esc(censusUrl("/results"))}">See every domain</a></p>
+${
+  data.runFinishedAt === null
+    ? ""
+    : `<p class="note">Last complete run: ${esc(data.runFinishedAt)}. Methodology ${esc(METHODOLOGY_VERSION)}.</p>`
+}
+`;
+
+  return page({
+    title: "MCP Census — the agent-reachable web, measured",
+    description:
+      "Of the organisations that provably run an MCP server, how many can an agent actually find? An open, reproducible census.",
+    path: "/",
+    body,
+  });
+}
+
+export function checkPage(options: {
+  domain?: string;
+  result?: {
+    apex: string;
+    score: number | null;
+    band: string | null;
+    assessed: boolean;
+    unassessedReason: string | null;
+    checks: Array<{ check_id: string; status: string; detail: string | null }>;
+    fixes: Array<{ title: string; detail: string }>;
+    known: boolean;
+  };
+  error?: string;
+}): string {
+  const form = `
+<form class="check" method="get" action="${esc(censusUrl("/check"))}">
+  <label class="note" for="domain" hidden>Domain</label>
+  <input id="domain" name="domain" type="text" inputmode="url" autocapitalize="off" spellcheck="false"
+    placeholder="example.com" value="${esc(options.domain ?? "")}" required>
+  <button class="btn" type="submit">Check it</button>
+</form>`;
+
+  let result = "";
+
+  if (options.error !== undefined) {
+    result = `<div class="card"><p>${esc(options.error)}</p></div>`;
+  } else if (options.result !== undefined) {
+    const r = options.result;
+    const score = r.assessed ? `${r.score} / 100` : "not assessable";
+
+    result = `
+<div class="card">
+  <p class="eyebrow">${esc(r.apex)}</p>
+  <h2>${esc(score)}${r.band === null ? "" : ` — <span class="pill band">${esc(r.band)}</span>`}</h2>
+  ${
+    r.assessed
+      ? ""
+      : `<p>We could not assess this domain: <code>${esc(r.unassessedReason ?? "unknown")}</code>.
+         That is a fact about our crawl, not a finding about the site.</p>`
+  }
+  <div class="scroll"><table>
+    <thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+    <tbody>${r.checks
+      .map(
+        (c) =>
+          `<tr><td class="mono">${esc(c.check_id)}</td><td>${statusPill(c.status)}</td><td class="note">${esc(
+            c.detail ?? "",
+          )}</td></tr>`,
+      )
+      .join("")}</tbody>
+  </table></div>
+  ${
+    r.known
+      ? `<p class="note">From the census. <a href="${esc(censusUrl(`/d/${r.apex}`))}">Permalink and history</a>.</p>`
+      : `<p class="note">This domain is not in a frozen universe, so it is recorded as
+         self-submitted and is excluded from every published statistic.</p>`
+  }
+</div>
+
+${
+  r.fixes.length === 0
+    ? ""
+    : `<h2>The highest-value things to fix</h2>${r.fixes
+        .map((f) => `<div class="fix"><h3>${esc(f.title)}</h3><p>${esc(f.detail)}</p></div>`)
+        .join("")}`
+}`;
+  }
+
+  const body = `
+<p class="eyebrow">The lead magnet</p>
+<h1>Are you in the census?</h1>
+<p class="lede">Enter a domain. No sign-up, nothing stored against you, and the same probe that
+produced every published number.</p>
+${form}
+${result}
+<p class="note">We check what you published on purpose, at the locations a specification or a public
+proposal told you to publish it. We never call a tool, never authenticate, and never test for
+weaknesses — <a href="${esc(censusUrl("/crawler"))}">exactly what we do</a>.</p>
+`;
+
+  return page({
+    title:
+      options.domain === undefined
+        ? "Check a domain — MCP Census"
+        : `${options.domain} — MCP Census`,
+    description:
+      "Check whether an AI agent could discover and connect to an MCP server for a domain.",
+    path: "/check",
+    body,
+  });
+}
+
+export function resultsPage(data: {
+  rows: Array<{
+    apex: string;
+    score: number | null;
+    band: string | null;
+    unassessed_reason: string | null;
+    universe: string;
+  }>;
+  universe?: string;
+}): string {
+  const filters = [
+    ["", "All"],
+    ["R", "Registry organisations"],
+    ["D", "AGNTCon cohort"],
+  ] as const;
+
+  const body = `
+<h1>Results</h1>
+<p class="lede">Every domain in the newest complete run. We name domains, because a census that
+does not is a survey.</p>
+
+<p>${filters
+    .map(([value, label]) =>
+      value === (data.universe ?? "")
+        ? `<span class="pill band">${esc(label)}</span> `
+        : `<a class="pill" href="${esc(censusUrl(value === "" ? "/results" : `/results?universe=${value}`))}">${esc(label)}</a> `,
+    )
+    .join("")}</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Domain</th><th class="num">Score</th><th>Band</th><th>Universe</th></tr></thead>
+<tbody>
+${data.rows
+  .map(
+    (r) => `<tr>
+<td><a href="${esc(censusUrl(`/d/${r.apex}`))}">${esc(r.apex)}</a></td>
+<td class="num">${r.score === null ? "—" : esc(r.score)}</td>
+<td>${r.band === null ? `<span class="pill skip">${esc(r.unassessed_reason ?? "not assessed")}</span>` : `<span class="pill band">${esc(r.band)}</span>`}</td>
+<td class="note">${esc(r.universe)}</td>
+</tr>`,
+  )
+  .join("\n")}
+</tbody></table></div>
+${data.rows.length === 0 ? '<p class="note">No completed run yet.</p>' : ""}
+<p class="note">Think a row is wrong? It probably is — <a href="${esc(censusUrl("/crawler"))}">tell us</a>,
+or open an issue. Being publicly wrong about a named domain is the failure we care most about.</p>
+`;
+
+  return page({
+    title: "Results — MCP Census",
+    description: "Every domain measured by the MCP Census, with its score and band.",
+    path: "/results",
+    body,
+  });
+}
+
+export function domainPage(data: {
+  apex: string;
+  score: number | null;
+  band: string | null;
+  assessed: number;
+  unassessedReason: string | null;
+  universe: string;
+  methodologyVersion: string;
+  finishedAt: string | null;
+  checks: Array<{ check_id: string; status: string; detail: string | null }>;
+  history: Array<{ run_id: number; score: number | null }>;
+}): string {
+  const body = `
+<p class="eyebrow">${esc(data.universe === "D" ? "AGNTCon cohort" : "Registry organisation")}</p>
+<h1>${esc(data.apex)}</h1>
+
+<div class="headline">
+  <span class="big">${data.assessed === 1 ? esc(data.score) : "—"}</span>
+  <p class="said">${
+    data.assessed === 1
+      ? `out of 100 — <span class="pill band">${esc(data.band ?? "")}</span>`
+      : `not assessable: <code>${esc(data.unassessedReason ?? "unknown")}</code>`
+  }</p>
+</div>
+
+<div class="scroll"><table>
+<thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+<tbody>${data.checks
+    .map(
+      (c) =>
+        `<tr><td class="mono">${esc(c.check_id)}</td><td>${statusPill(c.status)}</td><td class="note">${esc(c.detail ?? "")}</td></tr>`,
+    )
+    .join("")}</tbody>
+</table></div>
+
+${
+  data.history.length > 1
+    ? `<h2>History</h2><figure>${barChart(
+        data.history
+          .slice()
+          .reverse()
+          .map((h) => ({ label: `run ${h.run_id}`, value: h.score ?? 0 })),
+        { max: 100 },
+      )}<figcaption>Score by run. A change is only published once it persists across two consecutive runs.</figcaption></figure>`
+    : ""
+}
+
+<h2>Badge</h2>
+<p><img src="${esc(censusUrl(`/badge/${data.apex}.svg`))}" alt="MCP Census score for ${esc(data.apex)}" width="176" height="20"></p>
+<p class="note mono">${esc(censusUrl(`/badge/${data.apex}.svg`))}</p>
+
+<p class="note">Measured with methodology ${esc(data.methodologyVersion)}${
+    data.finishedAt === null ? "" : ` on ${esc(data.finishedAt)}`
+  }. Wrong? <a href="${esc(censusUrl("/crawler"))}">Tell us</a> — we would rather hear it from you.</p>
+`;
+
+  return page({
+    title: `${data.apex} — MCP Census`,
+    description: `Whether an AI agent could discover and connect to an MCP server for ${data.apex}.`,
+    path: `/d/${data.apex}`,
+    body,
+  });
+}
+
+/** An SVG badge. Fixed geometry so it needs no text measurement. */
+export function badgeSvg(label: string, value: string, colour: string): string {
+  const labelW = 92;
+  const valueW = Math.max(34, value.length * 8 + 16);
+  const total = labelW + valueW;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="20" role="img" aria-label="${esc(label)}: ${esc(value)}">
+<title>${esc(label)}: ${esc(value)}</title>
+<rect width="${total}" height="20" rx="3" fill="#3a3040"/>
+<rect x="${labelW}" width="${valueW}" height="20" rx="3" fill="${esc(colour)}"/>
+<rect x="${labelW}" width="4" height="20" fill="${esc(colour)}"/>
+<g font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" fill="#fff">
+<text x="6" y="14">${esc(label)}</text>
+<text x="${labelW + 8}" y="14">${esc(value)}</text>
+</g>
+</svg>`;
+}
+
+export function staticPage(options: {
+  title: string;
+  path: string;
+  description: string;
+  body: string;
+}): string {
+  return page(options);
+}
+
+export const CENSUS_BUILD = { CENSUS_VERSION, METHODOLOGY_VERSION };

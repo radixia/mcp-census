@@ -2,6 +2,7 @@ import { CENSUS_BASE_PATH, METHODOLOGY_VERSION } from "@mcp-census/core";
 
 import { consume, scheduled } from "./crawl.js";
 import type { CrawlMessage, Env } from "./env.js";
+import { route } from "./router.js";
 import { withSecurityHeaders } from "./security.js";
 
 /**
@@ -25,29 +26,17 @@ export async function handle(request: Request, env?: Env): Promise<Response> {
     return withSecurityHeaders(new Response("method not allowed", { status: 405 }));
   }
 
-  // A liveness probe that also proves the D1 binding works, which is the one
-  // thing a deploy can silently get wrong.
-  if (url.pathname === `${CENSUS_BASE_PATH}/health` && env?.DB !== undefined) {
-    const runs = await env.DB.prepare(`SELECT COUNT(*) AS n FROM runs`).first<{ n: number }>();
-    const scans = await env.DB.prepare(`SELECT COUNT(*) AS n FROM scans`).first<{ n: number }>();
+  // Without bindings there is nothing to serve. Only reachable in a unit test.
+  if (env?.DB === undefined) {
     return withSecurityHeaders(
       new Response(
-        JSON.stringify(
-          { status: "ok", methodologyVersion: METHODOLOGY_VERSION, runs: runs?.n, scans: scans?.n },
-          null,
-          2,
-        ),
+        JSON.stringify({ status: "no-bindings", methodologyVersion: METHODOLOGY_VERSION }, null, 2),
         { status: 200, headers: { "content-type": "application/json; charset=utf-8" } },
       ),
     );
   }
 
-  return withSecurityHeaders(
-    new Response(
-      JSON.stringify({ status: "scaffold", methodologyVersion: METHODOLOGY_VERSION }, null, 2),
-      { status: 200, headers: { "content-type": "application/json; charset=utf-8" } },
-    ),
-  );
+  return withSecurityHeaders(await route(request, env));
 }
 
 export default {
