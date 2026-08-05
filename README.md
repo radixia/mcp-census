@@ -46,7 +46,9 @@ sources:
 - **No server-card discovery mechanism has been standardised.** SEP-2127 is an
   open draft; the design has moved to an endpoint-relative card plus a Linux
   Foundation "AI Catalog".
-- **RFC 9728 is the only MUST-level discovery signal in the entire spec.**
+- **RFC 9728 is mandatory — but only for MCP servers that implement
+  authorization, and authorization is itself OPTIONAL.** A public server
+  correctly publishes nothing there.
 - The path most widely cited online, `/.well-known/mcp/server-card.json`, appears
   in **no primary document**.
 

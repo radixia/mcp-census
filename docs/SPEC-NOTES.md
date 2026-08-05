@@ -211,7 +211,7 @@ cargo-culting* is deployed in the wild is a legitimate finding.
 
 ---
 
-## 5. Authorization — the only normative discovery surface
+## 5. Authorization — normative, but conditionally
 
 From [Authorization Server Discovery](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/authorization-server-discovery):
 
@@ -219,9 +219,36 @@ From [Authorization Server Discovery](https://modelcontextprotocol.io/specificat
 > ([RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)) specification to
 > indicate the locations of authorization servers.
 
-This is the single strongest signal available to a census, and the only
-discovery-adjacent path that is **mandatory** rather than proposed. The brief's
-D4 is therefore not a minor auxiliary check — it should be promoted.
+**Read in isolation this is misleading, and we initially misread it.** The
+[Authorization index](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
+scopes the entire section:
+
+> Authorization is **OPTIONAL** for MCP implementations. When supported:
+> [...]
+
+and defines the role as *"A **protected** MCP server acts as an OAuth 2.1
+resource server"*. The RFC 9728 MUST therefore binds only servers that
+implement authorization — which is itself optional.
+
+**Consequence for D4, and it is significant.** A public, unauthenticated MCP
+server correctly publishes *no* Protected Resource Metadata. A `D4` failure is
+therefore **not** evidence of non-compliance on its own; it is ambiguous
+between:
+
+- the server requires no authorization — legitimate, and probably the common
+  case for read-only public servers, or
+- the server requires authorization but does not advertise it — genuinely
+  non-compliant.
+
+Distinguishing them needs the handshake: a server that answers an
+unauthenticated `server/discover` is public; one that returns `401` is
+protected and *must* have the metadata. Until `D5` lands, D4 must be reported
+as a positive signal when it passes and as **inconclusive** when it fails —
+never as a failure to comply.
+
+A `D4` *pass* remains the highest-confidence discovery evidence we can collect,
+because the document is unambiguous when present. It is the interpretation of
+absence that has to be careful.
 
 A server **MUST** implement one of:
 

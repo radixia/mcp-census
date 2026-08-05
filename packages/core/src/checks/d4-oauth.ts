@@ -1,10 +1,14 @@
 /**
  * D4 — OAuth Protected Resource metadata (RFC 9728).
  *
- * The only MUST-level discovery signal in the whole MCP specification: an MCP
- * server is *required* to implement RFC 9728 to advertise its authorization
- * servers. That makes this the highest-confidence check we have, and it is why
- * D4 is treated as primary rather than auxiliary.
+ * RFC 9728 is mandatory for MCP servers that implement authorization — and
+ * authorization is itself **OPTIONAL** under the specification. A public,
+ * unauthenticated server correctly publishes no Protected Resource Metadata.
+ *
+ * So a pass here is the highest-confidence discovery evidence available, because
+ * the document is unambiguous when present; a failure is *inconclusive* rather
+ * than non-compliance, because it cannot distinguish "needs no authorization"
+ * from "needs it and does not advertise it". Only D5 separates those.
  *
  * A `401` carrying `WWW-Authenticate: ... resource_metadata="..."` is a positive
  * detection, not a failure. Reading a response header is not an authentication

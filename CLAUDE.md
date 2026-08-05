@@ -131,8 +131,11 @@ discovery is actively contested. Verified findings that contradict intuition:
   open Draft; SEP-1649 was folded into it; SEP-1960 was never adopted. The design
   moved to an endpoint-relative `<mcp-url>/server-card` plus a Linux Foundation
   **AI Catalog** at `/.well-known/ai-catalog.json`.
-- **RFC 9728 is the only MUST-level discovery signal in the whole spec.** A `401`
-  carrying `WWW-Authenticate: ... resource_metadata=...` is a *positive detection*.
+- **RFC 9728 is MUST — but only for servers that implement authorization, and
+  authorization is itself OPTIONAL.** A public unauthenticated server correctly
+  publishes no Protected Resource Metadata, so a `D4` failure is *inconclusive*,
+  never a finding of non-compliance. A `401` carrying
+  `WWW-Authenticate: ... resource_metadata=...` is a *positive detection*.
 - `/.well-known/mcp/server-card.json` is widely asserted online but **appears in
   no primary document**. We probe it to measure cargo-culting, and never cite the
   blogs that claim it.

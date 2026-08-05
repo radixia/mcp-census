@@ -83,7 +83,7 @@ methodology revisions.
 | `D1` | MCP server card | `GET` each candidate path; record which responded and whether it parses | none — all candidates are drafts or historical |
 | `D2` | DNS discovery | `TXT` lookup at `_mcp.<apex>` | individual IETF draft, no standing |
 | `D3` | Conventional endpoint | `GET`/`HEAD` conventional paths and subdomains; **`405` is the positive signal** | Streamable HTTP transport |
-| `D4` | OAuth protected resource | `GET` root and path-inserted forms; parse `WWW-Authenticate` on `401` | **RFC 9728 — MUST** |
+| `D4` | OAuth protected resource | `GET` root and path-inserted forms; parse `WWW-Authenticate` on `401` | RFC 9728 — MUST, but only for servers that implement authorization |
 | `D5` | Handshake | unauthenticated JSON-RPC `server/discover`, falling back to `initialize`. Runs only if D1–D4 produced an endpoint | spec |
 | `D6` | Tool listing | JSON-RPC `tools/list`, read-only. Runs only if D5 succeeded | spec |
 | `Q1` | Tool surface shape | tool count, description presence and length distribution, parameter description coverage | — |
@@ -93,10 +93,20 @@ methodology revisions.
 
 Notes that matter for interpretation:
 
-- **`D4` is the only check with a MUST behind it.** An MCP server is *required* to
-  implement RFC 9728 Protected Resource Metadata. A `401` carrying
-  `WWW-Authenticate: ... resource_metadata=...` is a positive detection, not a
-  failure.
+- **`D4` has a MUST behind it, but a conditional one.** RFC 9728 is mandatory for
+  MCP servers that implement authorization — and *authorization itself is
+  **OPTIONAL*** under the specification. A public, unauthenticated server
+  correctly publishes no Protected Resource Metadata.
+
+  So a `D4` **pass** is the highest-confidence discovery evidence we collect: the
+  document is unambiguous when present. A `D4` **failure is inconclusive**, not a
+  finding of non-compliance — it cannot yet distinguish "needs no authorization"
+  from "needs it and fails to advertise it". Separating those requires `D5`: a
+  server answering an unauthenticated handshake is public; one returning `401`
+  is protected and must have the metadata. We report D4 failures as inconclusive
+  until then.
+- A `401` carrying `WWW-Authenticate: ... resource_metadata=...` is a positive
+  detection, not a failure.
 - **`D3` alone is weak evidence.** A `405` at `/mcp` is consistent with a modern
   MCP endpoint but also with any other POST-only endpoint. It is used to *locate*
   an endpoint for D5, never as a confirmed MCP server on its own. See
@@ -203,23 +213,28 @@ The things that weaken our own findings. This section is not a formality.
    missed. This affects only domains that already pass `D3`, so it biases the
    *mechanism distribution* rather than the headline hit rate. To be fixed before
    the full census.
-7. **A `200` catch-all can hide a real negative.** Some hosts answer every
+7. **A `D4` failure is inconclusive, and we cannot yet resolve it.** Until `D5`
+   lands we cannot tell a server that needs no authorization (correctly
+   publishing nothing) from one that needs it and fails to advertise it. `D4`
+   failures must not be reported as non-compliance, and the `D4` pass rate is a
+   floor on compliance, not a measure of it.
+8. **A `200` catch-all can hide a real negative.** Some hosts answer every
    unmatched path with `200` and a human-readable page. We reject those (they are
    neither JSON nor a valid metadata document), but a domain configured this way
    cannot be distinguished from one that has genuinely published nothing, and it
    is invisible to any scanner that only checks status codes.
-8. **Discovery candidates are a moving target.** We probe eight; a mechanism
+9. **Discovery candidates are a moving target.** We probe eight; a mechanism
    invented after our freeze date will read as absent. SEP-2127 could land between
    our run and our publication.
-9. **Shadow MCP misclassifies servers written by employees under personal
+10. **Shadow MCP misclassifies servers written by employees under personal
    namespaces** as third-party. This is why the claim is "you don't know about it",
    not "you didn't write it".
-10. **Registry coverage is partial and unstable.** The official registry is in
+11. **Registry coverage is partial and unstable.** The official registry is in
    preview with no durability guarantee; Smithery entries cannot be
    namespace-verified the same way; Glama and PulseMCP are not yet assessed.
-11. **The authors have a commercial interest** in this subject mattering. See the
+12. **The authors have a commercial interest** in this subject mattering. See the
    conflict-of-interest note above.
-12. **Input-list licensing is unresolved.** See below.
+13. **Input-list licensing is unresolved.** See below.
 
 ## Open questions
 
