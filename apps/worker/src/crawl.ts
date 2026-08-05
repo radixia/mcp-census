@@ -21,6 +21,7 @@ import {
 } from "@mcp-census/core";
 
 import { dohResolveTxt, sleep, workerFetch } from "./adapters.js";
+import { computeAggregates, computeDeltas } from "./deltas.js";
 import type { CrawlMessage, Env } from "./env.js";
 import { closeRun, loadOptOuts, openRun, persistScan } from "./store.js";
 
@@ -128,6 +129,14 @@ export async function consume(batch: MessageBatch<CrawlMessage>, env: Env): Prom
 
     if (row !== null && row.status === "running" && row.done >= row.planned) {
       await closeRun(env, runId);
+      // Only meaningful once the run is closed and flagged usable for deltas.
+      const deltas = await computeDeltas(env, runId);
+      const aggregates = await computeAggregates(env, runId);
+      console.log(
+        `run ${runId} closed: ${deltas.confirmed} changes confirmed, ` +
+          `${deltas.observed} observed, ${deltas.dropped} flaps dropped, ` +
+          `${aggregates} aggregates written`,
+      );
     }
   }
 }

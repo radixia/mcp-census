@@ -32,6 +32,7 @@ export interface PageOptions {
 const NAV: ReadonlyArray<[string, string]> = [
   ["/check", "Check a domain"],
   ["/results", "Results"],
+  ["/changes", "What changed"],
   ["/agntcon-2026", "AGNTCon"],
   ["/methodology", "Methodology"],
   ["/data", "Data"],

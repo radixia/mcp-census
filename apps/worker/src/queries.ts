@@ -201,3 +201,16 @@ export async function recentChanges(
     }>();
   return results;
 }
+
+/** The adoption curve, read from precomputed aggregates rather than raw scans. */
+export async function adoptionSeries(
+  env: Env,
+): Promise<Array<{ run_id: number; metric: string; value: number; denominator: number }>> {
+  const { results } = await env.DB.prepare(
+    `SELECT run_id, metric, value, denominator
+       FROM run_aggregates
+      WHERE universe = 'R' AND metric IN ('D1_pass', 'D5_pass')
+      ORDER BY run_id, metric`,
+  ).all<{ run_id: number; metric: string; value: number; denominator: number }>();
+  return results;
+}

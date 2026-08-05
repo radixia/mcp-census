@@ -10,15 +10,18 @@ import { CENSUS_BASE_PATH, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/co
 import { normaliseDomain, runCheck, withinRateLimit } from "./check.js";
 import type { Env } from "./env.js";
 import {
+  adoptionSeries,
   candidateDistribution,
   domainDetail,
   headline,
   latestRun,
   leaderboard,
+  recentChanges,
 } from "./queries.js";
 import { esc } from "./web/layout.js";
 import {
   badgeSvg,
+  changesPage,
   checkPage,
   domainPage,
   landingPage,
@@ -107,6 +110,11 @@ export async function route(request: Request, env: Env): Promise<Response> {
       HTML,
       600,
     );
+  }
+
+  if (path === "/changes") {
+    const [changes, adoption] = await Promise.all([recentChanges(env, 100), adoptionSeries(env)]);
+    return cacheable(changesPage({ changes, adoption }), HTML, 600);
   }
 
   if (path === "/results") {

@@ -357,3 +357,78 @@ export function staticPage(options: {
 }
 
 export const CENSUS_BUILD = { CENSUS_VERSION, METHODOLOGY_VERSION };
+
+export function changesPage(data: {
+  changes: Array<{
+    apex: string;
+    check_id: string;
+    from_status: string;
+    to_status: string;
+    confirmed_at: string;
+    category: string;
+  }>;
+  adoption: Array<{ run_id: number; metric: string; value: number; denominator: number }>;
+}): string {
+  const CHECK_WORDS: Record<string, string> = {
+    D1: "server card",
+    D2: "DNS discovery",
+    D3: "conventional endpoint",
+    D4: "RFC 9728 metadata",
+    D5: "handshake",
+    D6: "tool listing",
+    Q1: "tool surface quality",
+    F1: "text fallbacks",
+    F2: "declared crawler posture",
+  };
+
+  const body = `
+<h1>What changed</h1>
+<p class="lede">A change appears here only after it has persisted across two consecutive complete
+runs. During the pilot a domain answered us and then refused an hour later, purely from bot
+mitigation — at these base rates that kind of flapping produces more apparent change than real
+adoption does, so a raw feed would be mostly false. The cost is that we are about a day behind
+reality, which is the better trade.</p>
+
+${
+  data.changes.length === 0
+    ? `<div class="card"><p>Nothing confirmed yet. The first run is a baseline, not a set of
+       changes — publishing it as changes would announce the entire census as news.</p></div>`
+    : `<div class="scroll"><table>
+<thead><tr><th>Domain</th><th>What</th><th>Change</th><th>Confirmed</th></tr></thead>
+<tbody>${data.changes
+        .map(
+          (c) => `<tr>
+<td><a href="${esc(censusUrl(`/d/${c.apex}`))}">${esc(c.apex)}</a></td>
+<td>${esc(CHECK_WORDS[c.check_id] ?? c.check_id)}</td>
+<td>${
+            c.to_status === "pass"
+              ? '<span class="pill pass">started</span>'
+              : '<span class="pill fail">stopped</span>'
+          }</td>
+<td class="note">${esc(c.confirmed_at.slice(0, 10))}</td>
+</tr>`,
+        )
+        .join("")}</tbody></table></div>`
+}
+
+<h2>Adoption over time</h2>
+${
+  data.adoption.length === 0
+    ? '<p class="note">Needs at least two complete runs.</p>'
+    : `<figure>${barChart(
+        data.adoption.map((a) => ({
+          label: `run ${a.run_id} ${a.metric.replace("candidate:", "")}`,
+          value: a.denominator === 0 ? 0 : Math.round((a.value / a.denominator) * 1000) / 10,
+        })),
+        { unit: "%" },
+      )}<figcaption>Share of assessed domains, by run.</figcaption></figure>`
+}
+`;
+
+  return page({
+    title: "What changed — MCP Census",
+    description: "Confirmed changes in MCP adoption, debounced across two consecutive runs.",
+    path: "/changes",
+    body,
+  });
+}
