@@ -1,8 +1,8 @@
-import { NEUTRAL_THEME, RADIXIA_THEME, THEMES } from "@mcp-census/core";
+import { censusUrl, NEUTRAL_THEME, RADIXIA_THEME, THEMES } from "@mcp-census/core";
 import { describe, expect, it } from "vitest";
 import { fixesFor, normaliseDomain } from "../check.js";
 
-import { barChart, esc, page } from "./layout.js";
+import { barChart, ctaCard, esc, page } from "./layout.js";
 import { badgeSvg, checkPage, domainPage, landingPage, resultsPage } from "./pages.js";
 import { censusStylesheet, STRUCTURE_CSS } from "./styles.js";
 
@@ -45,7 +45,7 @@ describe("pages render without JavaScript", () => {
   const pages = [
     ["landing", landingPage({ headline: HEADLINE, candidates: [], runFinishedAt: null })],
     ["check", checkPage({})],
-    ["results", resultsPage({ rows: [] })],
+    ["results", resultsPage({ rows: [], total: 0, offset: 0, bandCounts: [], letterCounts: {} })],
   ] as const;
 
   it.each(pages)("%s has no script tag at all", (_name, html) => {
@@ -258,8 +258,18 @@ describe("stylesheet", () => {
       }),
       resultsPage({
         rows: [
-          { apex: "example.com", score: 85, band: "Connectable", assessed: 1, universe: "R" },
-        ] as never,
+          {
+            apex: "example.com",
+            score: 85,
+            band: "Connectable",
+            unassessed_reason: null,
+            universe: "R",
+          },
+        ],
+        total: 1,
+        offset: 0,
+        bandCounts: [{ band: "Connectable", n: 1 }],
+        letterCounts: { e: 1 },
       }),
       checkPage({}),
     ].join("\n");
@@ -309,5 +319,133 @@ describe("stylesheet", () => {
   it("only references fonts on the same origin, which the CSP requires", () => {
     expect(radixia).toContain('url("/fonts/');
     expect(radixia).not.toMatch(/url\("https?:/);
+  });
+});
+
+describe("getting back out, and the pitch", () => {
+  const radixia = { theme: RADIXIA_THEME, themeScript: false };
+
+  it("offers a way up to the parent site", () => {
+    // A census served under somebody's domain is a dead end without this.
+    const html = page({ title: "x", description: "d", path: "/", body: "", chrome: radixia });
+    expect(html).toContain('class="up" href="https://www.radixia.ai"');
+    expect(html).toContain("Radixia");
+  });
+
+  it("renders no back-link and no CTA when the theme names no operator", () => {
+    const html = page({ title: "x", description: "d", path: "/", body: "" });
+    expect(html).not.toContain('class="up"');
+    expect(ctaCard(undefined)).toBe("");
+    expect(ctaCard({ theme: NEUTRAL_THEME, themeScript: false })).toBe("");
+  });
+
+  it("renders the operator's CTA when there is one", () => {
+    const card = ctaCard(radixia);
+    expect(card).toContain('class="card cta"');
+    expect(card).toContain("https://www.radixia.ai/enterprise-ai");
+    expect(card).toContain('class="btn"');
+  });
+
+  it("keeps the CTA free of threat language", () => {
+    // The project's line is that someone else is defining how agents talk to your
+    // brand — never that you are under attack. A CTA that traded on alarm would
+    // undo the positioning everything else is careful about.
+    const text = ctaCard(radixia).toLowerCase();
+    for (const word of ["attack", "vulnerable", "exposed", "risk", "threat", "breach", "danger"]) {
+      expect(text, `CTA should not say "${word}"`).not.toContain(word);
+    }
+  });
+});
+
+describe("results are all reachable", () => {
+  const rows = Array.from({ length: 100 }, (_, i) => ({
+    apex: `d${i}.example`,
+    score: 50,
+    band: "Discoverable",
+    unassessed_reason: null,
+    universe: "R",
+  }));
+  const base = {
+    rows,
+    total: 7422,
+    offset: 0,
+    bandCounts: [
+      { band: "Absent", n: 2288 },
+      { band: "Agent-ready", n: 408 },
+    ],
+    letterCounts: { a: 300, z: 12 },
+  };
+
+  it("says which slice of the total is on screen", () => {
+    // The bug: the table was capped at the top 500 by score with no way to reach
+    // the other 6,922, and because hundreds tie on score it looked like the list
+    // simply stopped mid-alphabet.
+    expect(resultsPage(base)).toContain("Showing 1\u2013100 of 7422 domains");
+    expect(resultsPage({ ...base, offset: 7400 })).toContain("Showing 7401\u20137422");
+  });
+
+  it("pages forward and back, and does not offer either at the ends", () => {
+    const first = resultsPage(base);
+    expect(first).toContain("offset=100");
+    expect(first).toContain('<span class="pill skip">\u2190 Previous</span>');
+
+    const last = resultsPage({ ...base, offset: 7400 });
+    expect(last).toContain('<span class="pill skip">Next \u2192</span>');
+  });
+
+  it("keeps other filters when paging", () => {
+    const html = resultsPage({ ...base, band: "Absent", universe: "R" });
+    expect(html).toMatch(/offset=100[^"]*/);
+    const nextHref = /href="([^"]*offset=100[^"]*)"/.exec(html)?.[1] ?? "";
+    expect(nextHref).toContain("band=Absent");
+    expect(nextHref).toContain("universe=R");
+  });
+
+  it("dims letters with nothing behind them instead of linking to an empty page", () => {
+    const html = resultsPage(base);
+    expect(html).toContain('<span class="pill skip">b</span>');
+    expect(html).toContain("letter=a");
+  });
+
+  it("offers band clusters with their counts", () => {
+    const html = resultsPage(base);
+    expect(html).toContain("Absent 2288");
+    expect(html).toContain("Agent-ready 408");
+  });
+
+  it("points at the bulk download, which beats paging for real questions", () => {
+    expect(resultsPage(base)).toContain(censusUrl("/data"));
+  });
+});
+
+describe("where the CTA appears", () => {
+  const chrome = { theme: RADIXIA_THEME, themeScript: false };
+
+  it("shows on pages where the reader just learned something", () => {
+    expect(
+      landingPage({ chrome, headline: HEADLINE, candidates: [], runFinishedAt: null }),
+    ).toContain("card cta");
+    expect(
+      checkPage({
+        chrome,
+        domain: "x.com",
+        result: {
+          apex: "x.com",
+          score: 85,
+          band: "Connectable",
+          assessed: true,
+          unassessedReason: null,
+          checks: [],
+          fixes: [],
+          known: true,
+        },
+      }),
+    ).toContain("card cta");
+  });
+
+  it("stays off the empty check form, where there is nothing to react to", () => {
+    // Leading with a pitch before any measurement would read as the point of the
+    // page, which is exactly the positioning this project protects.
+    expect(checkPage({ chrome })).not.toContain("card cta");
   });
 });

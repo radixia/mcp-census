@@ -17,11 +17,14 @@ import { normaliseDomain, runCheck, withinRateLimit } from "./check.js";
 import type { Env } from "./env.js";
 import {
   adoptionSeries,
+  bandCounts,
   candidateDistribution,
   domainDetail,
   headline,
   latestRun,
   leaderboard,
+  leaderboardCount,
+  letterCounts,
   recentChanges,
 } from "./queries.js";
 import { esc, type PageChrome } from "./web/layout.js";
@@ -31,6 +34,7 @@ import {
   checkPage,
   domainPage,
   landingPage,
+  RESULTS_PAGE_SIZE,
   resultsPage,
   staticPage,
 } from "./web/pages.js";
@@ -139,18 +143,59 @@ export async function route(request: Request, env: Env): Promise<Response> {
   }
 
   if (path === "/results") {
-    const universeParam = url.searchParams.get("universe");
-    const universe = universeParam === null || universeParam === "" ? undefined : universeParam;
+    const param = (k: string) => {
+      const v = url.searchParams.get(k);
+      return v === null || v === "" ? undefined : v;
+    };
+    const universe = param("universe");
+    const band = param("band");
+    // Lower-cased and length-checked so an arbitrary query string cannot widen
+    // the filter; anything else is simply ignored rather than erroring.
+    const rawLetter = param("letter")?.toLowerCase();
+    const letter =
+      rawLetter !== undefined && (rawLetter === "#" || /^[a-z]$/.test(rawLetter))
+        ? rawLetter
+        : undefined;
+    const parsedOffset = Number.parseInt(url.searchParams.get("offset") ?? "0", 10);
+    const offset = Number.isFinite(parsedOffset) && parsedOffset > 0 ? parsedOffset : 0;
+
+    const filter = {
+      ...(universe === undefined ? {} : { universe }),
+      ...(band === undefined ? {} : { band }),
+      ...(letter === undefined ? {} : { letter }),
+    };
+
     const run = await latestRun(env);
-    const rows =
-      run === null
-        ? []
-        : await leaderboard(env, run.id, {
-            ...(universe === undefined ? {} : { universe }),
-            limit: 500,
-          });
+    if (run === null) {
+      return cacheable(
+        resultsPage({ chrome, rows: [], total: 0, offset: 0, bandCounts: [], letterCounts: {} }),
+        HTML,
+        60,
+      );
+    }
+
+    const [rows, total, bands, letters] = await Promise.all([
+      leaderboard(env, run.id, { ...filter, limit: RESULTS_PAGE_SIZE, offset }),
+      leaderboardCount(env, run.id, filter),
+      bandCounts(env, run.id, universe === undefined ? {} : { universe }),
+      // Letter tallies ignore the letter filter itself, so the index keeps
+      // showing every reachable letter rather than only the selected one.
+      letterCounts(env, run.id, {
+        ...(universe === undefined ? {} : { universe }),
+        ...(band === undefined ? {} : { band }),
+      }),
+    ]);
+
     return cacheable(
-      resultsPage({ chrome, rows, ...(universe === undefined ? {} : { universe }) }),
+      resultsPage({
+        chrome,
+        rows,
+        total,
+        offset,
+        bandCounts: bands,
+        letterCounts: letters,
+        ...filter,
+      }),
       HTML,
       600,
     );

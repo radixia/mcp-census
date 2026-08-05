@@ -68,6 +68,30 @@ const CENSUS_ONLY = {
   dark: { ok: "#4fd18b", warn: "#e8b04b", bad: "#ff8f8f" },
 } as const;
 
+/**
+ * Radixia's call to action. Hand-maintained here rather than derived, because the
+ * brand package has no opinion about what the census sells.
+ *
+ * Deliberately flat in tone. The census's whole standing rests on being a
+ * measurement rather than a scare, so this offers help with a fact and does not
+ * imply a threat. If this copy ever starts sounding like a security warning,
+ * that is a bug.
+ *
+ * `/enterprise-ai` and not `/capabilities/ai-architecture`: the latter 404s on the
+ * currently deployed site and only exists on the content-2026-09 branch, whereas
+ * /enterprise-ai answers 200 today and redirects to the new page once that branch
+ * ships. It is the one URL that is correct before and after the deploy.
+ */
+const CTA = {
+  heading: "Would you rather this said something else?",
+  body:
+    "Radixia designs and runs the plumbing that makes a brand reachable by agents " +
+    "\u2014 MCP servers, discovery documents, and the boring parts that decide whether " +
+    "any of it can be found. We are in this dataset too.",
+  label: "How we work",
+  url: "https://www.radixia.ai/enterprise-ai",
+} as const;
+
 interface BrandTokens {
   light: Record<string, string>;
   dark: Record<string, string>;
@@ -120,6 +144,9 @@ export const RADIXIA_BRAND_VERSION = ${JSON.stringify(pkg.version)};
 
 const FONT_FACES = ${JSON.stringify(fontFaces)};
 
+/** Radixia's pitch. Kept factual: this is a measurement, not a warning. */
+const CTA = ${JSON.stringify(CTA, null, 2).replace(/\n/g, "\n")};
+
 export const RADIXIA_THEME: CensusTheme = {
   id: "radixia",
   // The site writes a manual light/dark override; census pages honour it.
@@ -137,6 +164,7 @@ ${literal(dark, "    ")}
     repoUrl: "https://github.com/radixia/mcp-census",
     // radixia.ai is in this dataset and never excluded from it.
     inOwnDataset: true,
+    cta: CTA,
   },
 };
 `;

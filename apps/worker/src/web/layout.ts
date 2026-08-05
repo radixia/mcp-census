@@ -107,7 +107,14 @@ ${SEARCH_INDEXING_ENABLED ? "" : '<meta name="robots" content="noindex, nofollow
   }
 </head>
 <body>
-<header class="top"><div class="wrap">
+<header class="top"><div class="wrap">${
+    brand.operator === undefined
+      ? ""
+      : // A census served under somebody's domain is a dead end without a way
+        // back up to it. Rendered as a breadcrumb rather than a nav item so the
+        // direction is obvious.
+        `\n<a class="up" href="${esc(brand.operator.url)}">\u2190 ${esc(brand.operator.name)}</a>`
+  }
 <a class="brand" href="${esc(censusUrl("/"))}">${esc(brand.productName)}</a>
 <nav>${NAV.map(([href, label]) => `<a href="${esc(censusUrl(href))}">${esc(label)}</a>`).join("")}</nav>
 </div></header>
@@ -123,6 +130,24 @@ Code Apache-2.0, data CC-BY-4.0 —
 </div></footer>
 </body>
 </html>`;
+}
+
+/**
+ * The operator's call to action, or nothing at all.
+ *
+ * Returns an empty string when the theme declares no CTA, which is the neutral
+ * default — a fork must not inherit somebody else's pitch. Shown only on pages
+ * where the reader has just learned something concrete about a domain; putting it
+ * on the methodology or crawler pages would undercut them.
+ */
+export function ctaCard(chrome: PageChrome | undefined): string {
+  const cta = (chrome ?? DEFAULT_CHROME).theme.branding.cta;
+  if (cta === undefined) return "";
+  return `<aside class="card cta">
+<h2>${esc(cta.heading)}</h2>
+<p>${esc(cta.body)}</p>
+<p><a class="btn" href="${esc(cta.url)}">${esc(cta.label)}</a></p>
+</aside>`;
 }
 
 /** A horizontal bar chart as inline SVG. No chart library, no client JS. */

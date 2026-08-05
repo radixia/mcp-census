@@ -40,6 +40,10 @@ code,.mono{font-family:var(--font-mono);font-size:.9em}
 header.top{border-bottom:1px solid var(--line);background:var(--paper-2)}
 header.top .wrap{display:flex;gap:20px;align-items:baseline;padding:14px 20px;flex-wrap:wrap}
 header.top .brand{font-family:var(--font-display);font-weight:600;color:var(--ink)}
+/* Back up to the parent site. Muted, because it is an exit rather than a
+   destination, but always present so the census is never a dead end. */
+header.top .up{color:var(--ink-3);font-size:.88rem;white-space:nowrap}
+header.top .up:hover{color:var(--accent-deep)}
 header.top nav{display:flex;gap:16px;flex-wrap:wrap;font-size:.92rem}
 header.top nav a{color:var(--ink-2)}
 
@@ -85,6 +89,10 @@ form.check input{flex:1 1 260px;min-width:0;font:inherit;padding:13px 14px;
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   padding:20px;margin:18px 0}
+.cta{background:var(--paper-2);border-color:var(--accent);margin-top:36px}
+.cta h2{margin-top:0;font-size:1.25rem}
+.cta p{color:var(--ink-2);max-width:60ch}
+.cta p:last-child{margin-bottom:0}
 .fix{border-left:3px solid var(--accent);padding-left:14px;margin:14px 0}
 .fix h3{margin:0 0 .3em;font-size:1rem}
 .note{font-size:.9rem;color:var(--ink-3)}

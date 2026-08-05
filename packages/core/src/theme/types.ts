@@ -48,8 +48,32 @@ export interface ThemeTokens {
 export interface ThemeBranding {
   /** The product name in the header. Not the operator's name. */
   readonly productName: string;
-  /** Who runs this instance. Rendered in the footer; omit to say nothing. */
+  /**
+   * Who runs this instance. Rendered in the footer, and as a back-link in the
+   * header so a visitor who arrived at `/census/` can reach the parent site —
+   * a census served under somebody's domain is a dead end without it.
+   *
+   * Omit to say nothing and render no back-link.
+   */
   readonly operator?: { readonly name: string; readonly url: string };
+  /**
+   * An optional call to action, shown after the reader has learned something
+   * about a domain.
+   *
+   * In branding rather than in page copy on purpose: it is the operator's pitch,
+   * and a fork must not inherit somebody else's. Undefined renders nothing.
+   *
+   * Keep it factual. The project's line is "someone else is defining how agents
+   * talk to your brand, and you don't know about it" — never "you are under
+   * attack". A CTA that trades on alarm would undo the positioning the rest of
+   * the site is careful about.
+   */
+  readonly cta?: {
+    readonly heading: string;
+    readonly body: string;
+    readonly label: string;
+    readonly url: string;
+  };
   /** Source repository, shown in the footer. */
   readonly repoUrl: string;
   /**

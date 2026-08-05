@@ -8,7 +8,7 @@
 
 import { CENSUS_VERSION, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/core";
 
-import { barChart, esc, type PageChrome, page, statGrid, statusPill } from "./layout.js";
+import { barChart, ctaCard, esc, type PageChrome, page, statGrid, statusPill } from "./layout.js";
 
 /** Provenance of each candidate path, so the fragmentation chart is legible. */
 const CANDIDATE_LABELS: Record<string, string> = {
@@ -107,6 +107,8 @@ ${
     ? ""
     : `<p class="note">Last complete run: ${esc(data.runFinishedAt)}. Methodology ${esc(METHODOLOGY_VERSION)}.</p>`
 }
+
+${ctaCard(data.chrome)}
 `;
 
   return page({
@@ -198,6 +200,12 @@ ${result}
 <p class="note">We check what you published on purpose, at the locations a specification or a public
 proposal told you to publish it. We never call a tool, never authenticate, and never test for
 weaknesses — <a href="${esc(censusUrl("/crawler"))}">exactly what we do</a>.</p>
+
+${
+  // Only after a real measurement. On the empty form there is nothing to
+  // react to yet, and leading with a pitch would read as the point of the page.
+  options.result === undefined ? "" : ctaCard(options.chrome)
+}
 `;
 
   return page({
@@ -210,6 +218,13 @@ weaknesses — <a href="${esc(censusUrl("/crawler"))}">exactly what we do</a>.</
   });
 }
 
+export const RESULTS_PAGE_SIZE = 100;
+
+const LETTERS = [..."abcdefghijklmnopqrstuvwxyz", "#"];
+
+/** Bands in narrative order, worst to best, with the unassessed bucket last. */
+const BANDS = ["Absent", "Text-only", "Discoverable", "Connectable", "Agent-ready", "unassessed"];
+
 export function resultsPage(data: {
   chrome?: PageChrome;
   rows: Array<{
@@ -219,26 +234,76 @@ export function resultsPage(data: {
     unassessed_reason: string | null;
     universe: string;
   }>;
+  total: number;
+  offset: number;
+  bandCounts: Array<{ band: string; n: number }>;
+  letterCounts: Record<string, number>;
   universe?: string;
+  band?: string;
+  letter?: string;
 }): string {
-  const filters = [
+  const { total, offset } = data;
+  const size = RESULTS_PAGE_SIZE;
+
+  /** Build a results URL preserving the other filters. Omitted keys are cleared. */
+  const url = (over: { universe?: string; band?: string; letter?: string; offset?: number }) => {
+    const q = new URLSearchParams();
+    const universe = "universe" in over ? over.universe : data.universe;
+    const band = "band" in over ? over.band : data.band;
+    const letter = "letter" in over ? over.letter : data.letter;
+    if (universe !== undefined && universe !== "") q.set("universe", universe);
+    if (band !== undefined && band !== "") q.set("band", band);
+    if (letter !== undefined && letter !== "") q.set("letter", letter);
+    if (over.offset !== undefined && over.offset > 0) q.set("offset", String(over.offset));
+    const qs = q.toString();
+    return censusUrl(qs === "" ? "/results" : `/results?${qs}`);
+  };
+
+  const chip = (label: string, href: string, active: boolean, n?: number) =>
+    active
+      ? `<span class="pill band">${esc(label)}${n === undefined ? "" : ` ${esc(n)}`}</span> `
+      : `<a class="pill" href="${esc(href)}">${esc(label)}${n === undefined ? "" : ` ${esc(n)}`}</a> `;
+
+  const byBand = new Map(data.bandCounts.map((b) => [b.band, b.n]));
+  const universes: ReadonlyArray<readonly [string, string]> = [
     ["", "All"],
     ["R", "Registry organisations"],
     ["D", "AGNTCon cohort"],
-  ] as const;
+  ];
+
+  const from = total === 0 ? 0 : offset + 1;
+  const to = Math.min(offset + size, total);
+  const prev = offset - size;
+  const next = offset + size;
 
   const body = `
 <h1>Results</h1>
 <p class="lede">Every domain in the newest complete run. We name domains, because a census that
 does not is a survey.</p>
 
-<p>${filters
-    .map(([value, label]) =>
-      value === (data.universe ?? "")
-        ? `<span class="pill band">${esc(label)}</span> `
-        : `<a class="pill" href="${esc(censusUrl(value === "" ? "/results" : `/results?universe=${value}`))}">${esc(label)}</a> `,
-    )
+<h3>Population</h3>
+<p>${universes.map(([v, l]) => chip(l, url({ universe: v, offset: 0 }), v === (data.universe ?? ""))).join("")}</p>
+
+<h3>Band</h3>
+<p>${chip("All bands", url({ band: "", offset: 0 }), data.band === undefined)}${BANDS.filter(
+    (b) => (byBand.get(b) ?? 0) > 0,
+  )
+    .map((b) => chip(b, url({ band: b, offset: 0 }), data.band === b, byBand.get(b)))
     .join("")}</p>
+
+<h3>Starts with</h3>
+<p>${chip("Any", url({ letter: "", offset: 0 }), data.letter === undefined)}${LETTERS.map((l) => {
+    const n = data.letterCounts[l] ?? 0;
+    // Dimmed and unlinked when nothing matches, rather than offering a dead end.
+    if (n === 0) return `<span class="pill skip">${esc(l)}</span> `;
+    return chip(l, url({ letter: l, offset: 0 }), data.letter === l);
+  }).join("")}</p>
+
+<p class="note">${
+    total === 0
+      ? "Nothing matches this combination."
+      : `Showing ${esc(from)}\u2013${esc(to)} of ${esc(total)} domains.`
+  }</p>
 
 <div class="scroll"><table>
 <thead><tr><th>Domain</th><th class="num">Score</th><th>Band</th><th>Universe</th></tr></thead>
@@ -247,16 +312,25 @@ ${data.rows
   .map(
     (r) => `<tr>
 <td><a href="${esc(censusUrl(`/d/${r.apex}`))}">${esc(r.apex)}</a></td>
-<td class="num">${r.score === null ? "—" : esc(r.score)}</td>
+<td class="num">${r.score === null ? "\u2014" : esc(r.score)}</td>
 <td>${r.band === null ? `<span class="pill skip">${esc(r.unassessed_reason ?? "not assessed")}</span>` : `<span class="pill band">${esc(r.band)}</span>`}</td>
 <td class="note">${esc(r.universe)}</td>
 </tr>`,
   )
   .join("\n")}
 </tbody></table></div>
-${data.rows.length === 0 ? '<p class="note">No completed run yet.</p>' : ""}
-<p class="note">Think a row is wrong? It probably is — <a href="${esc(censusUrl("/crawler"))}">tell us</a>,
+
+<nav class="pager">
+${prev >= 0 ? `<a class="pill" href="${esc(url({ offset: prev }))}">\u2190 Previous</a>` : `<span class="pill skip">\u2190 Previous</span>`}
+${next < total ? `<a class="pill" href="${esc(url({ offset: next }))}">Next \u2192</a>` : `<span class="pill skip">Next \u2192</span>`}
+</nav>
+
+<p class="note">Every row is reachable: filter by band or first letter, or page through.
+The full dataset is also a <a href="${esc(censusUrl("/data"))}">single download</a>, which is
+usually the faster way to answer a question about thousands of domains.</p>
+<p class="note">Think a row is wrong? It probably is \u2014 <a href="${esc(censusUrl("/crawler"))}">tell us</a>,
 or open an issue. Being publicly wrong about a named domain is the failure we care most about.</p>
+${ctaCard(data.chrome)}
 `;
 
   return page({
@@ -323,6 +397,8 @@ ${
 <p class="note">Measured with methodology ${esc(data.methodologyVersion)}${
     data.finishedAt === null ? "" : ` on ${esc(data.finishedAt)}`
   }. Wrong? <a href="${esc(censusUrl("/crawler"))}">Tell us</a> — we would rather hear it from you.</p>
+
+${ctaCard(data.chrome)}
 `;
 
   return page({

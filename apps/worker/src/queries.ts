@@ -95,24 +95,134 @@ export interface LeaderRow {
   readonly universe: string;
 }
 
+/**
+ * How the results table is narrowed. Every field is optional and bound as a
+ * parameter, never interpolated.
+ */
+export interface ResultsFilter {
+  readonly universe?: string;
+  readonly band?: string;
+  /** First character of the apex: "a".."z", or "#" for anything non-alphabetic. */
+  readonly letter?: string;
+}
+
+/**
+ * Shared WHERE fragment plus its bindings.
+ *
+ * Kept in one place because the row query, the count and the band tallies must
+ * agree exactly — a count that disagrees with its own page produces pagination
+ * that runs off the end, which is worse than no pagination.
+ */
+function resultsWhere(runId: number, f: ResultsFilter): { sql: string; binds: unknown[] } {
+  const clauses = ["s.run_id = ?"];
+  const binds: unknown[] = [runId];
+
+  if (f.universe !== undefined) {
+    clauses.push("d.universe = ?");
+    binds.push(f.universe);
+  }
+  if (f.band !== undefined) {
+    if (f.band === "unassessed") clauses.push("s.assessed = 0");
+    else {
+      clauses.push("s.band = ?");
+      binds.push(f.band);
+    }
+  }
+  if (f.letter !== undefined) {
+    if (f.letter === "#") clauses.push("LOWER(SUBSTR(s.apex, 1, 1)) NOT BETWEEN 'a' AND 'z'");
+    else {
+      clauses.push("LOWER(SUBSTR(s.apex, 1, 1)) = ?");
+      binds.push(f.letter);
+    }
+  }
+  return { sql: clauses.join(" AND "), binds };
+}
+
+/**
+ * One page of results.
+ *
+ * Paged rather than capped. The previous version took the top 500 by score with
+ * no way to reach the rest, which on 7,422 domains hid 6,922 of them — and because
+ * hundreds tie on score, the alphabetical tiebreak made it look like the table
+ * simply stopped in the middle of the alphabet.
+ *
+ * Ordering follows intent: an alphabetical filter means the reader is looking for
+ * a specific domain, so sort by name; otherwise the interesting end is the top, so
+ * sort by score.
+ */
 export async function leaderboard(
   env: Env,
   runId: number,
-  options: { universe?: string; limit: number },
+  options: ResultsFilter & { limit: number; offset?: number },
 ): Promise<LeaderRow[]> {
-  const universe = options.universe;
+  const { sql, binds } = resultsWhere(runId, options);
+  const order =
+    options.letter === undefined ? "s.assessed DESC, s.score DESC, s.apex" : "s.apex, s.score DESC";
+
   const { results } = await env.DB.prepare(
     `SELECT s.apex, s.score, s.band, s.unassessed_reason, d.universe
        FROM scans s
        JOIN domains d ON d.apex = s.apex
-      WHERE s.run_id = ?
-        AND (? IS NULL OR d.universe = ?)
-      ORDER BY s.assessed DESC, s.score DESC, s.apex
-      LIMIT ?`,
+      WHERE ${sql}
+      ORDER BY ${order}
+      LIMIT ? OFFSET ?`,
   )
-    .bind(runId, universe ?? null, universe ?? null, options.limit)
+    .bind(...binds, options.limit, options.offset ?? 0)
     .all<LeaderRow>();
   return results;
+}
+
+/** Total matching the same filter, so pagination knows where to stop. */
+export async function leaderboardCount(
+  env: Env,
+  runId: number,
+  filter: ResultsFilter,
+): Promise<number> {
+  const { sql, binds } = resultsWhere(runId, filter);
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM scans s JOIN domains d ON d.apex = s.apex WHERE ${sql}`,
+  )
+    .bind(...binds)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+/** Counts per band, for the filter pills. Respects the universe filter only. */
+export async function bandCounts(
+  env: Env,
+  runId: number,
+  filter: Pick<ResultsFilter, "universe">,
+): Promise<Array<{ band: string; n: number }>> {
+  const { sql, binds } = resultsWhere(runId, filter);
+  const { results } = await env.DB.prepare(
+    `SELECT COALESCE(s.band, 'unassessed') AS band, COUNT(*) AS n
+       FROM scans s JOIN domains d ON d.apex = s.apex
+      WHERE ${sql}
+      GROUP BY COALESCE(s.band, 'unassessed')`,
+  )
+    .bind(...binds)
+    .all<{ band: string; n: number }>();
+  return results;
+}
+
+/** How many domains start with each letter, so empty letters can be dimmed. */
+export async function letterCounts(
+  env: Env,
+  runId: number,
+  filter: ResultsFilter,
+): Promise<Record<string, number>> {
+  const { sql, binds } = resultsWhere(runId, filter);
+  const { results } = await env.DB.prepare(
+    `SELECT CASE WHEN LOWER(SUBSTR(s.apex,1,1)) BETWEEN 'a' AND 'z'
+                 THEN LOWER(SUBSTR(s.apex,1,1)) ELSE '#' END AS l,
+            COUNT(*) AS n
+       FROM scans s JOIN domains d ON d.apex = s.apex
+      WHERE ${sql}
+      GROUP BY l`,
+  )
+    .bind(...binds)
+    .all<{ l: string; n: number }>();
+  return Object.fromEntries(results.map((r) => [r.l, r.n]));
 }
 
 export interface DomainDetail {

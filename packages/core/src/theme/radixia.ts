@@ -18,6 +18,14 @@ export const RADIXIA_BRAND_VERSION = "0.2.0";
 
 const FONT_FACES = "@font-face {\n  font-family: \"Fraunces\";\n  font-style: normal;\n  font-weight: 100 900;\n  font-display: swap;\n  src: url(\"/fonts/fraunces-latin-var.woff2\") format(\"woff2\");\n  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;\n}\n\n@font-face {\n  font-family: \"Public Sans\";\n  font-style: normal;\n  font-weight: 100 900;\n  font-display: swap;\n  src: url(\"/fonts/public-sans-latin-var.woff2\") format(\"woff2\");\n  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;\n}\n\n@font-face {\n  font-family: \"JetBrains Mono\";\n  font-style: normal;\n  font-weight: 100 800;\n  font-display: swap;\n  src: url(\"/fonts/jetbrains-mono-latin-var.woff2\") format(\"woff2\");\n  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;\n}";
 
+/** Radixia's pitch. Kept factual: this is a measurement, not a warning. */
+const CTA = {
+  "heading": "Would you rather this said something else?",
+  "body": "Radixia designs and runs the plumbing that makes a brand reachable by agents — MCP servers, discovery documents, and the boring parts that decide whether any of it can be found. We are in this dataset too.",
+  "label": "How we work",
+  "url": "https://www.radixia.ai/enterprise-ai"
+};
+
 export const RADIXIA_THEME: CensusTheme = {
   id: "radixia",
   // The site writes a manual light/dark override; census pages honour it.
@@ -65,5 +73,6 @@ export const RADIXIA_THEME: CensusTheme = {
     repoUrl: "https://github.com/radixia/mcp-census",
     // radixia.ai is in this dataset and never excluded from it.
     inOwnDataset: true,
+    cta: CTA,
   },
 };
