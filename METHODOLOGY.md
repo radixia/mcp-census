@@ -51,10 +51,42 @@ download date. Nothing is measured that is not in a committed list.
 
 | Tag | Universe | Status |
 |---|---|---|
-| A | Global top domains | not yet frozen — see [Open questions](#open-questions) |
-| B | Europe | not yet frozen |
-| C | Italy | not yet frozen |
-| D | AGNTCon + MCPCon Europe 2026 sponsors and speakers | not yet frozen |
+| **R** | **Organizations that provably run an MCP server** — the headline population | **frozen 2026-08-05**, 7,377 organizations |
+| D | AGNTCon + MCPCon Europe 2026 sponsors and speakers | **frozen 2026-08-05**, 52 domains |
+| A | Global top domains | context only — see [Open questions](#open-questions) |
+| B | Europe | not frozen |
+| C | Italy | not frozen |
+
+### Universe R is the headline population
+
+Measuring the web's top domains asks "how many big brands have an MCP server?".
+The answer is approximately none — about 1% in our pilot — and Cloudflare
+already published that across 200,000 domains in April 2026. Repeating it at
+smaller scale produces a weaker version of somebody else's result.
+
+Universe R asks a question nobody has answered: **of the organizations that
+demonstrably run an MCP server, how many can an agent actually find?** It is
+built from the MCP Registry's own public API, from two forms of evidence only a
+domain owner can produce — a registry-verified reverse-DNS namespace, or a
+remote endpoint hosted on the apex itself.
+
+Three consequences, all deliberate:
+
+- **The base rate stops being the limiting factor.** These domains are known to
+  have servers, so discoverability becomes measurable at n≈7,000 instead of
+  resting on a handful of hits.
+- **No third-party licensing.** Universe R derives from the registry's public
+  API, not from a ranked domain list, so — unlike anything Tranco-derived — the
+  frozen universe can be republished in full alongside the results.
+- **No overlap with prior work.** Cloudflare measures the whole web with a
+  single boolean; this measures the population that matters, per mechanism.
+
+**Platforms are separated from organizations.** A domain hosting three or more
+servers whose namespaces belong to somebody else is acting as hosting
+infrastructure, not publishing its own server: `pipeworx.io` (1,311),
+`smithery.ai` (217), `apify.actor`. 70 such platforms are tagged and excluded
+from the organization count, because a few thousand deployments on shared
+infrastructure would otherwise drive the headline rate.
 
 ## Protocol context
 
