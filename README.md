@@ -6,23 +6,32 @@ to an [MCP](https://modelcontextprotocol.io) server for that brand?
 
 The dataset is open, the code is open, and we name domains.
 
-> **Status: pre-release scaffold.** Nothing has been measured yet and no numbers
-> have been published. The launch target is **2026-09-17**, timed to
+> **Status: measuring.** The site is live at
+> **[www.radixia.ai/census](https://www.radixia.ai/census/)** and the full census
+> is running. The launch target is **2026-09-17**, timed to
 > [AGNTCon + MCPCon Europe](https://events.linuxfoundation.org/agntcon-mcpcon-europe/)
-> in Amsterdam. Follow the repo; the commit history is part of the record.
+> in Amsterdam. No frozen release has been cut yet.
 
-## The headline number
+## The headline
 
-None yet — and we would rather say so than pre-announce one.
+**Two-thirds of the organisations that provably run an MCP server publish nothing
+an agent could use to find it.** Measured over a 400-domain sample of the 7,377
+organisations the official MCP Registry proves run one — 66.8% had no discovery
+signal at all, and only 17.3% published a server card.
 
-For context on what we expect to find: Cloudflare
-[measured the 200,000 most visited domains in April 2026](https://blog.cloudflare.com/agent-readiness/)
-and found MCP Server Cards on **fewer than 15 of them**. Our contribution is not
-re-deriving that number at smaller scale. It is naming domains, publishing the raw
-per-domain dataset, breaking out Europe and Italy, measuring *which* of the eight
-competing discovery mechanisms actually respond in the wild, and joining the
-census against public MCP registries to find brands whose MCP server was written
-by somebody else.
+The figure is *conservative*: this population both built **and registered** a
+server, which makes it plausibly the most MCP-engaged population there is.
+
+And of the cards that do exist, **90% sit on a path that is superseded or appears
+in no specification document at all** — the second most-deployed path in the world
+propagated through blog posts. Only 7% use the location the current proposal
+actually defers to.
+
+Cloudflare [measured 200,000 domains in April 2026](https://blog.cloudflare.com/agent-readiness/)
+and found MCP Server Cards on fewer than 15. We are not re-deriving that at
+smaller scale — we measure the population that matters, name domains, publish the
+raw per-domain dataset, record *which* of eight competing discovery mechanisms
+answered, and join the census against the public registry.
 
 ## What this is not
 
@@ -61,13 +70,28 @@ this repo and get our headline number.
 
 ```bash
 pnpm install
-pnpm test
+pnpm test          # 309 tests
 pnpm build
 ```
 
-Once the pilot exists, the full census run and the release-snapshot procedure will
-be documented here. Frozen input lists live in `data/universe/` with provenance and
-download dates; frozen output snapshots live in `data/releases/<date>/`.
+The population is derived from the official MCP Registry's public API, so — unlike
+anything built on a ranked domain list — the frozen universe is republished in
+full and you do not need a licensed input to repeat the work.
+
+```bash
+# rebuild the universe from a registry snapshot
+node scripts/shadow/pull.ts --out out/registry.json
+node scripts/shadow/universe-r.ts --registry out/registry.json --out universe.csv
+
+# run the census
+pnpm pilot --input universe.csv --out out/run --concurrency 64
+
+# cut a release: CSV, JSON, JSONL, summary, Zenodo metadata, DuckDB → Parquet
+node scripts/export/release.ts --jsonl out/run/results.jsonl --date YYYY-MM-DD
+```
+
+Frozen input lists live in `data/universe/` with provenance and download dates;
+frozen output snapshots live in `data/releases/<date>/`.
 
 ## Checking a single domain
 
@@ -75,16 +99,21 @@ download dates; frozen output snapshots live in `data/releases/<date>/`.
 npx mcpcensus check example.com
 ```
 
-The CLI lands in Phase 2. It will run the same probes as the census, from the same
-`packages/core`, so a single check and a census row are always comparable.
+It runs the same probes as the census, from the same `packages/core`, so a single
+check and a census row are always comparable. `--json` emits the dataset's own
+shape; `--all` dumps the evidence. Exit code 2 means *not assessable* — a domain
+whose `robots.txt` excluded us is never reported as a zero.
+
+Not yet published to npm, so for now: `pnpm install && pnpm build && node
+packages/cli/dist/cli.js check example.com`.
 
 ## Layout
 
 ```
 packages/core/     probes, politeness guards, scoring. Isomorphic, no I/O, no Cloudflare deps
 packages/cli/      npx mcpcensus
-apps/worker/       the Worker: HTTP routes, queue consumer, cron
-apps/web/          templates and static assets served by the Worker
+apps/worker/       the Worker: routes, pages, queue consumer, cron, deltas
+apps/worker/src/web/  templates, stylesheet, inline-SVG charts
 data/universe/     frozen input lists, with provenance
 data/releases/     frozen output snapshots, one directory per release date
 docs/SPEC-NOTES.md what the spec actually says today, with URLs and access dates

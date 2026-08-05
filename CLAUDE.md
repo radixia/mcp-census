@@ -10,16 +10,17 @@ scope collide, cut scope and say explicitly what was cut.
 
 ---
 
-## ⚠️ Before starting Phase 1
+## ⚠️ Read this first
 
-**This repository is public.** Keep competitive analysis, commercial reasoning and
-undecided strategy out of it — including out of commit messages. Those live in
-`NOTES.local.md`, which is gitignored.
+**This repository is public, and so is the site.** Keep competitive analysis,
+commercial reasoning and undecided strategy out of both — including out of commit
+messages. Those live in `NOTES.local.md` and `GTM.local.md`, which are gitignored.
 
-**Phase 1 is gated on a scope decision that is recorded in `NOTES.local.md`.**
-Read that file first; if it is missing (fresh clone, or a machine other than
-Marco's), ask him rather than assuming the brief's original framing still holds.
-Prior art relevant to the decision is documented factually in
+**The headline population is Universe R**: organisations the official MCP Registry
+proves run a server. Measuring the web's top domains was abandoned because the
+answer is ~1% and Cloudflare already published it at 200k scale; the current
+question is *of the organisations that demonstrably run a server, how many can an
+agent reach?* Prior art is documented factually in
 [docs/SPEC-NOTES.md](docs/SPEC-NOTES.md) §9.
 
 ---
@@ -106,9 +107,11 @@ name on stickers and badges.
 - `www` is canonical. The base URL lives in **one constant**
   (`packages/core/src/config/site.ts`); never concatenate a URL anywhere else.
 - Per-domain permalinks are SSR from D1, never pre-rendered into the static build.
-- Zone plan is **free** and stays free. **Workers Paid ($5/mo) is required from
-  Phase 3** (D1 + Queues + Cron) and is **not yet active** — tell Marco to
-  activate it at the start of Phase 3, not before.
+- Zone plan is **free** and stays free. **Workers Paid is active** since
+  2026-08-05, which is what unlocks D1, Queues and Cron.
+- **The Workers route is live**: `www.radixia.ai/census/*` serves the census.
+  Every other path on the zone is untouched and the static build was never
+  modified. Verified by smoke test at the time it was enabled.
 
 ---
 
@@ -170,28 +173,34 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 | # | Phase | Status |
 |---|---|---|
 | 0 | Scaffold, licences, SPEC-NOTES, crawler ethics | **done** 2026-08-04 |
-| 1 | Core probes D1–D4/F1/F2 + 500-domain pilot — **GO/NO-GO** | blocked: see `NOTES.local.md` |
-| 2 | CLI (`npx mcpcensus check <domain>`), published to npm | not started |
-| 3 | Cloudflare infra — **gate: activate Workers Paid first** | not started |
-| 4 | Full census, universes A–D, frozen input lists | not started |
-| 5 | Shadow MCP four-way classification | not started |
-| 6 | Public site under `/census/` | not started |
-| 7 | Data release, CSV+Parquet+JSON, Zenodo, final METHODOLOGY | not started |
-| 8 | Conference mode (only if 0–7 are done) | not started |
+| 1 | Core probes D1–D6, Q1, F1, F2 + pilot | **done** 2026-08-05 |
+| 2 | CLI `npx mcpcensus check` | **done**; not yet published to npm |
+| 3 | Cloudflare infra — D1, R2, KV, Queues, cron | **done** 2026-08-05 |
+| 4 | Full census over Universe R + D | in progress |
+| 5 | Shadow MCP classification | **partial** — see below |
+| 6 | Public site, live at www.radixia.ai/census/ | **done** 2026-08-05 |
+| 7 | Data release, Parquet, Zenodo | tooling done, no release cut |
+| 8 | Conference mode | not started |
 
 Work strictly in order. Stop at each phase boundary, show Marco, wait for
 approval, and commit with a real message.
 
 ## Known blockers
 
-1. **Scope decision** — gates Phase 1. See `NOTES.local.md`.
-2. **Tranco licensing** — Tranco aggregates Cloudflare Radar under **CC BY-NC
+1. **npm publish of `mcpcensus`** — needs Marco's npm auth. The CLI works; it is
+   not on the registry, so `npx mcpcensus` fails for anyone else.
+2. **Shadow MCP is not acceptance-ready** — ~85% precision on name matching, no
+   brand-level dedup across ccTLDs. `shadow_candidate` is deliberately named and
+   the count must not be quoted. See `docs/SHADOW-2026-08-05.md`.
+3. **Seven `inferred` domains in Universe D** need hand-checking before any
+   output names those companies.
+4. **Zenodo deposition** — metadata is generated; depositing needs an account.
+5. **Tranco licensing** — Tranco aggregates Cloudflare Radar under **CC BY-NC
    4.0** (non-commercial); we intend CC-BY-4.0 output from a commercial
    consultancy. Resolve **before** Phase 4 freezes an input list; re-freezing
    later destroys reproducibility.
-3. **`draft-morrison-mcp-dns-discovery` TXT format unverified** — fetch before
-   implementing D2. Do not guess it.
-4. **Smithery API key** — needed for Phase 5; auth required, rate limits unknown.
+6. ~~`draft-morrison` TXT format~~ — verified 2026-08-05, implemented in D2.
+7. **Smithery API key** — needed for Phase 5; auth required, rate limits unknown.
 
 ## Facts worth not re-deriving
 
