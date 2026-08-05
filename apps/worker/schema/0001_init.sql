@@ -68,6 +68,16 @@ CREATE TABLE scans (
   finished_at  TEXT,
   request_count INTEGER NOT NULL DEFAULT 0,
   duration_ms  INTEGER,
+  -- Full evidence for every check in this scan lives in R2 under
+  --   evidence/<apex>/<run_id>.json
+  -- Measured at ~4.3 KB per domain per run; at 7,377 domains that is ~32 MB a
+  -- run, which crosses D1's 10 GB ceiling inside a year of daily crawling. D1
+  -- keeps what the site reads on every page; R2 keeps what it reads on one.
+  --
+  -- The key is apex-first deliberately. We promise to honour opt-outs, and
+  -- "delete everything about this domain" must be a prefix delete, not a scan
+  -- across every run we have ever done.
+  evidence_key TEXT,
   -- Mirrors ScoreResult: assessed rows carry a score, unassessed ones carry the
   -- reason. A blocked domain is NOT a zero, and the schema must not let it
   -- become one by leaving score NULL-able-but-defaulted.
@@ -84,11 +94,22 @@ CREATE TABLE scans (
 CREATE INDEX idx_scans_apex_run ON scans (apex, run_id DESC);
 CREATE INDEX idx_scans_run ON scans (run_id);
 
+-- Status only. No evidence blob.
+--
+-- Evidence was ~4.3 KB per domain per run, half of it F2 listing twenty crawler
+-- tokens that are `not_mentioned` for most domains. Keeping it here would put
+-- ~11.6 GB a year into a 10 GB database to serve a detail view that one page in
+-- a thousand opens. It lives in R2; `scans.evidence_key` points at it.
+--
+-- What remains is ~40 bytes a row, ~645 MB a year at daily cadence, and it is
+-- everything the leaderboard, the per-domain page and the adoption chart read.
 CREATE TABLE check_results (
   scan_id    INTEGER NOT NULL REFERENCES scans (id),
   check_id   TEXT NOT NULL,              -- D1..D6, Q1, F1, F2, S1
   status     TEXT NOT NULL CHECK (status IN ('pass', 'fail', 'skip', 'error')),
-  evidence   TEXT NOT NULL,              -- JSON
+  -- A short, closed-vocabulary reason where one adds meaning the status cannot
+  -- carry — 'skipped_by_robots', 'html_catch_all', 'malformed'. Never a blob.
+  detail     TEXT,
   latency_ms INTEGER,
   PRIMARY KEY (scan_id, check_id)
 );
@@ -166,6 +187,8 @@ CREATE TABLE run_aggregates (
 -- Registry side (Phase 5)
 -- ---------------------------------------------------------------------------
 
+-- Only the fields the join needs. The full 86 MB registry snapshot is an
+-- immutable artifact and belongs in R2 at registry/<pulled_at>.json, not here.
 CREATE TABLE registry_servers (
   name          TEXT NOT NULL,
   version       TEXT NOT NULL,
@@ -174,7 +197,7 @@ CREATE TABLE registry_servers (
   is_github_namespace INTEGER NOT NULL DEFAULT 0,
   title         TEXT,
   website_host  TEXT,
-  endpoints     TEXT,                    -- JSON array of hosts
+  endpoints     TEXT,                    -- JSON array of hosts, short
   status        TEXT,
   pulled_at     TEXT NOT NULL,
   PRIMARY KEY (name, version)
