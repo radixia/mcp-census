@@ -9,7 +9,17 @@
     "enabled": true
   },
 
-  // Routing is deliberately commented out until Phase 6.
+  // Enabled 2026-08-05, with Marco's explicit approval.
+  //
+  // Route matching sends only /census/* here; every other path on the zone is
+  // served exactly as before, and the static radixia.ai build is untouched. The
+  // zone carries no other Workers Routes and no Transform Rules, and
+  // mcp.radixia.ai is attached as a Custom Domain, so the two mechanisms cannot
+  // collide. The apex -> www Redirect Rule fires before Workers, which is why
+  // every URL we emit is already on the www host.
+  "routes": [{ "pattern": "www.radixia.ai/census/*", "zone_name": "radixia.ai" }],
+
+  // Historical note, kept because it is the reason the above is safe.
   //
   // The zone was inspected on 2026-08-04 and is clean: no Transform Rules, all
   // Managed Transforms off, and no Workers Routes at all. `radixia.ai` is a
