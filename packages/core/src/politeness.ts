@@ -37,8 +37,15 @@ export const POLITENESS = {
   /** Hard ceiling per apex domain, regardless of how fast it responds. */
   maxRequestsPerSecondPerApex: 1,
   minDelayMsPerApexMs: 1000,
-  /** Ceiling across the entire crawl, not per worker. */
-  maxGlobalConcurrency: 8,
+  /**
+   * Ceiling across the entire crawl, not per worker.
+   *
+   * This bounds how many *different* apexes are probed at once; no site ever
+   * sees more than the per-apex rate above. Runners must read this value
+   * rather than pick their own, so the number the ethics document publishes is
+   * the number that is actually enforced.
+   */
+  maxGlobalConcurrency: 64,
   connectTimeoutMs: 5_000,
   totalTimeoutMs: 10_000,
   maxRetries: 2,

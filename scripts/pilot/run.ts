@@ -13,13 +13,14 @@
  * rate-limited by core, so raising this never speeds up any single site.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 import {
   type DomainProbeResult,
   GuardedHttpClient,
+  POLITENESS,
   ProbeGuardError,
   probeDomain,
   resolveCrawlerIdentity,
@@ -32,9 +33,13 @@ const { values } = parseArgs({
     input: { type: "string" },
     domains: { type: "string" },
     limit: { type: "string" },
-    concurrency: { type: "string", default: "8" },
+    concurrency: { type: "string" },
     out: { type: "string", default: "out/pilot" },
     optouts: { type: "string", default: "data/optouts.txt" },
+    // Skip apexes already present in the out dir's results.jsonl. The JSONL is
+    // the authoritative cumulative record; the CSV and summary a resumed run
+    // writes cover only that run's freshly-probed rows.
+    resume: { type: "boolean", default: false },
   },
   // pnpm can forward a bare `--`; tolerate it rather than crashing on it.
   allowPositionals: true,
@@ -258,20 +263,59 @@ function summarise(rows: readonly Row[]): string {
   return lines.join("\n");
 }
 
+/**
+ * Resolve concurrency: default to the published cap, and never exceed it. The
+ * ethics document names a number; the runner must not quietly beat it.
+ */
+function resolveConcurrency(): number {
+  const cap = POLITENESS.maxGlobalConcurrency;
+  const requested =
+    values.concurrency === undefined ? cap : Number.parseInt(values.concurrency, 10);
+  if (!Number.isFinite(requested) || requested < 1) return cap;
+  return Math.min(requested, cap);
+}
+
+/** Apexes already recorded in a prior run's JSONL, so a resumed run skips them. */
+async function loadDone(path: string): Promise<Set<string>> {
+  try {
+    const text = await readFile(path, "utf8");
+    const done = new Set<string>();
+    for (const line of text.split("\n")) {
+      if (line.trim() === "") continue;
+      try {
+        const apex = (JSON.parse(line) as { apex?: string }).apex;
+        if (apex !== undefined) done.add(apex);
+      } catch {
+        // A torn final line from a hard kill. Skip it; the domain re-runs.
+      }
+    }
+    return done;
+  } catch {
+    return new Set();
+  }
+}
+
 async function main(): Promise<void> {
-  const domains = await loadDomains();
+  const allDomains = await loadDomains();
   const optOuts = await loadOptOuts(values.optouts as string);
-  const concurrency = Number.parseInt(values.concurrency as string, 10);
+  const concurrency = resolveConcurrency();
   const outDir = values.out as string;
 
   await mkdir(outDir, { recursive: true });
+
+  // Every completed domain is appended here immediately, so a crash at domain
+  // 480 does not lose the first 479 — and --resume picks up where it stopped.
+  const jsonlPath = join(outDir, "results.jsonl");
+  const done = values.resume === true ? await loadDone(jsonlPath) : new Set<string>();
+  const domains = allDomains.filter((d) => !done.has(d));
 
   // Fails loudly if the opt-out contact was ever reset to a placeholder.
   const identity = resolveCrawlerIdentity();
 
   process.stderr.write(`${identity.userAgent}\n`);
+  const resumeNote = done.size > 0 ? `, resuming (${done.size} already done)` : "";
   process.stderr.write(
-    `probing ${domains.length} domains, concurrency ${concurrency}, opt-outs ${optOuts.size}\n\n`,
+    `probing ${domains.length} domains, concurrency ${concurrency}, opt-outs ${optOuts.size}${resumeNote}\n\n`,
   );
 
   const started = Date.now();
@@ -279,7 +323,10 @@ async function main(): Promise<void> {
     domains,
     concurrency,
     (apex) => probeOne(apex, optOuts),
-    (row, done) => {
+    (row, completed) => {
+      // Append-only, one JSON object per line, flushed as each domain finishes.
+      void appendFile(jsonlPath, `${JSON.stringify(row.result ?? row)}\n`, "utf8");
+
       const score = row.result?.score;
       const verdict = row.guardViolation
         ? "GUARD VIOLATION"
@@ -287,7 +334,7 @@ async function main(): Promise<void> {
           ? `${score.score} ${score.band}`
           : (score?.reason ?? row.crashed ?? "error");
       process.stderr.write(
-        `[${String(done).padStart(4)}/${domains.length}] ${row.apex.padEnd(34)} ${verdict}\n`,
+        `[${String(completed).padStart(4)}/${domains.length}] ${row.apex.padEnd(34)} ${verdict}\n`,
       );
     },
   );

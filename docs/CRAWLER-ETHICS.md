@@ -62,7 +62,7 @@ That is the whole surface. There is no step 6.
 | | |
 |---|---|
 | Rate | **1 request per second, maximum**, per domain |
-| Concurrency | Hard cap across the entire crawl, not per domain |
+| Concurrency | At most **64 domains** probed at once, crawl-wide. This bounds how many *different* sites we visit in parallel — your site never sees more than the 1 req/s above, no matter what the crawl is doing elsewhere |
 | Timeouts | 5s connect, 10s total |
 | Retries | Exponential backoff on `429` and `5xx`, then we give up after 2 |
 | Redirects | One hop, and only if it stays on your domain |
