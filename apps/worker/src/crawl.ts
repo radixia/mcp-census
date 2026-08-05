@@ -78,31 +78,42 @@ export async function consume(batch: MessageBatch<CrawlMessage>, env: Env): Prom
   const identity = resolveCrawlerIdentity();
   const deps = { fetch: workerFetch(), sleep, now: () => Date.now() };
 
-  for (const message of batch.messages) {
-    const { runId, apex } = message.body;
-    const startedAt = new Date().toISOString();
+  // Concurrently, not sequentially. Every message is a different apex and the
+  // rate limit is per apex, so serialising a batch buys no politeness and costs
+  // a great deal of wall clock: at ~60s a domain, a batch of ten took ten
+  // minutes and the queue barely moved.
+  //
+  // The published cap is what bounds real concurrency: batch size x
+  // max_concurrency in wrangler.jsonc is set to exactly
+  // POLITENESS.maxGlobalConcurrency, so no more different sites are in flight
+  // than the ethics document promises.
+  await Promise.all(
+    batch.messages.map(async (message) => {
+      const { runId, apex } = message.body;
+      const startedAt = new Date().toISOString();
 
-    try {
-      const client = new GuardedHttpClient(deps, { apex, identity, optOuts });
-      const result = await probeDomain(
-        { client, now: () => Date.now(), resolveTxt: dohResolveTxt() },
-        { apex },
-      );
-      await persistScan(env, runId, result, startedAt);
-      message.ack();
-    } catch (error) {
-      // A guard violation is our bug. Retrying would just repeat it, and it must
-      // be impossible to miss, so the message is dropped and the error surfaced.
-      if (error instanceof ProbeGuardError) {
-        console.error(`GUARD VIOLATION ${apex}: ${error.rule}: ${error.message}`);
+      try {
+        const client = new GuardedHttpClient(deps, { apex, identity, optOuts });
+        const result = await probeDomain(
+          { client, now: () => Date.now(), resolveTxt: dohResolveTxt() },
+          { apex },
+        );
+        await persistScan(env, runId, result, startedAt);
         message.ack();
-        continue;
+      } catch (error) {
+        // A guard violation is our bug. Retrying would just repeat it, and it
+        // must be impossible to miss, so the message is acked and logged loudly.
+        if (error instanceof ProbeGuardError) {
+          console.error(`GUARD VIOLATION ${apex}: ${error.rule}: ${error.message}`);
+          message.ack();
+          return;
+        }
+        // Anything else may be transient — let the queue retry it.
+        console.error(`probe failed ${apex}: ${String(error)}`);
+        message.retry();
       }
-      // Anything else may be transient — let the queue retry it.
-      console.error(`probe failed ${apex}: ${String(error)}`);
-      message.retry();
-    }
-  }
+    }),
+  );
 
   // Close the run once every planned domain has a row. Cheap to check, and it
   // is what marks the run usable as a delta baseline.

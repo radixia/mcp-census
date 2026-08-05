@@ -46,10 +46,13 @@
 
   "queues": {
     "producers": [{ "binding": "CRAWL_QUEUE", "queue": "mcp-census-crawl" }],
-    // One domain per message. A batch of 10 with 8 concurrent consumers stays
-    // well inside the published 64-apex concurrency cap.
+    // One domain per message, and a batch is probed concurrently because the
+    // rate limit is per apex. 8 x 8 = 64 different sites in flight at most,
+    // which is exactly POLITENESS.maxGlobalConcurrency and exactly the number
+    // docs/CRAWLER-ETHICS.md publishes. Changing either factor changes a
+    // promise, so change both together.
     "consumers": [
-      { "queue": "mcp-census-crawl", "max_batch_size": 10, "max_concurrency": 8, "max_retries": 2 }
+      { "queue": "mcp-census-crawl", "max_batch_size": 8, "max_concurrency": 8, "max_retries": 2 }
     ]
   },
 
