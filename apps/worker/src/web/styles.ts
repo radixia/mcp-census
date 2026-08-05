@@ -40,10 +40,20 @@ code,.mono{font-family:var(--font-mono);font-size:.9em}
 header.top{border-bottom:1px solid var(--line);background:var(--paper-2)}
 header.top .wrap{display:flex;gap:20px;align-items:baseline;padding:14px 20px;flex-wrap:wrap}
 header.top .brand{font-family:var(--font-display);font-weight:600;color:var(--ink)}
-/* Back up to the parent site. Muted, because it is an exit rather than a
-   destination, but always present so the census is never a dead end. */
-header.top .up{color:var(--ink-3);font-size:.88rem;white-space:nowrap}
+/* Back up to the parent site, on every page including 404s.
+   Was --ink-3 at .88rem on the theory that an exit should be quiet. That read as
+   absent — the first feedback on it was that it wasn't there — so it is now the
+   same weight as the nav with a visible separator after it. Quiet is fine for a
+   footer link; a way out of a subsite has to be findable. */
+header.top .up{color:var(--ink-2);font-weight:600;white-space:nowrap;
+  padding-right:20px;border-right:1px solid var(--line)}
 header.top .up:hover{color:var(--accent-deep)}
+/* On narrow screens the flex row wraps; keep the way out on its own first line
+   rather than letting it collide with the product name. */
+@media (max-width:560px){
+  header.top .wrap{gap:10px}
+  header.top .up{flex:1 0 100%;border-right:0;padding-right:0}
+}
 header.top nav{display:flex;gap:16px;flex-wrap:wrap;font-size:.92rem}
 header.top nav a{color:var(--ink-2)}
 

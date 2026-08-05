@@ -2,7 +2,7 @@ import { censusUrl, NEUTRAL_THEME, RADIXIA_THEME, THEMES } from "@mcp-census/cor
 import { describe, expect, it } from "vitest";
 import { fixesFor, normaliseDomain } from "../check.js";
 
-import { barChart, ctaCard, esc, page } from "./layout.js";
+import { areaChart, barChart, ctaCard, esc, page } from "./layout.js";
 import { badgeSvg, checkPage, domainPage, landingPage, resultsPage } from "./pages.js";
 import { censusStylesheet, STRUCTURE_CSS } from "./styles.js";
 
@@ -447,5 +447,66 @@ describe("where the CTA appears", () => {
     // Leading with a pitch before any measurement would read as the point of the
     // page, which is exactly the positioning this project protects.
     expect(checkPage({ chrome })).not.toContain("card cta");
+  });
+});
+
+describe("the growth chart", () => {
+  const GROWTH = [
+    { month: "2025-09", added: 787, cumulative: 787, partial: 0, snapshot_date: "2026-08-05" },
+    { month: "2026-07", added: 18952, cumulative: 63052, partial: 0, snapshot_date: "2026-08-05" },
+    { month: "2026-08", added: 2735, cumulative: 65787, partial: 1, snapshot_date: "2026-08-05" },
+  ];
+  const land = (growth?: typeof GROWTH) =>
+    landingPage({
+      headline: HEADLINE,
+      candidates: [],
+      runFinishedAt: null,
+      ...(growth === undefined ? {} : { registryGrowth: growth }),
+    });
+
+  it("plots the series and names the end points", () => {
+    const html = land(GROWTH);
+    expect(html).toContain("<svg");
+    expect(html).toContain("65,787");
+    expect(html).toContain("787");
+  });
+
+  it("marks the incomplete month instead of letting it read as a crash", () => {
+    // A snapshot on the 5th puts five days beside thirty. Unflagged, the last
+    // point looks like the ecosystem collapsed.
+    const html = land(GROWTH);
+    expect(html).toContain("still in progress");
+    expect(html).toContain('<span class="pill skip">partial</span>');
+    // Hollow end marker: filled with the page colour, not the accent.
+    expect(html).toContain('fill="var(--paper)" stroke="var(--accent)"');
+  });
+
+  it("attributes the number to the registry, not to us", () => {
+    // Conflating the registry's server count with our reachability measurement
+    // would be the most damaging error this page could make.
+    const html = land(GROWTH);
+    expect(html).toContain("registry's own count");
+    expect(html).toContain("not ours");
+  });
+
+  it("cites the snapshot date it came from", () => {
+    expect(land(GROWTH)).toContain("2026-08-05");
+  });
+
+  it("renders nothing at all rather than a trend from one point", () => {
+    expect(land()).not.toContain("The ecosystem is growing");
+    expect(land([GROWTH[0] as (typeof GROWTH)[0]])).not.toContain("The ecosystem is growing");
+    expect(areaChart([{ label: "a", value: 1 }])).toBe("");
+  });
+
+  it("repeats the series as a real table, which is the accessible version", () => {
+    const html = land(GROWTH);
+    expect(html).toContain("<details>");
+    expect(html).toContain("New servers");
+    expect(html).toContain("18,952");
+  });
+
+  it("gives the svg an accessible label", () => {
+    expect(land(GROWTH)).toMatch(/role="img" aria-label="[^"]+"/);
   });
 });

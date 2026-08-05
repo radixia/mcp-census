@@ -180,6 +180,109 @@ export function barChart(
   return `<svg viewBox="0 0 ${labelW + barW + 110} ${height}" role="img" width="100%">${bars}</svg>`;
 }
 
+/**
+ * A cumulative time series as inline SVG: filled area, line, end-point marker.
+ *
+ * No chart library and no client JavaScript, per the project's constraints, which
+ * also means no tooltips — so the numbers a reader needs are drawn on the chart
+ * and the whole series is repeated as a real table underneath. That table is not
+ * a fallback nobody sees; it is the accessible version and the one you can copy.
+ *
+ * A `partial` point is drawn hollow and dashed. Without that, a snapshot taken on
+ * the 5th of a month puts five days beside thirty and renders a cliff — the
+ * easiest way to publish an accidental lie about a trend.
+ */
+export function areaChart(
+  points: ReadonlyArray<{ label: string; value: number; partial?: boolean }>,
+  options: { caption?: string; unit?: string } = {},
+): string {
+  if (points.length < 2) return "";
+
+  const W = 720;
+  const H = 260;
+  const padL = 58;
+  const padR = 14;
+  const padT = 16;
+  const padB = 34;
+  const max = Math.max(...points.map((p) => p.value), 1);
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+
+  const x = (i: number) => padL + (i / (points.length - 1)) * innerW;
+  const y = (v: number) => padT + innerH - (v / max) * innerH;
+
+  const line = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`)
+    .join(" ");
+  const area = `${line} L${x(points.length - 1).toFixed(1)},${(padT + innerH).toFixed(1)} L${padL},${(padT + innerH).toFixed(1)} Z`;
+
+  // Three gridlines is enough to read a magnitude without becoming graph paper.
+  const ticks = [0, 0.5, 1].map((f) => {
+    const v = Math.round(max * f);
+    const gy = y(v).toFixed(1);
+    return `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="var(--line)" stroke-width="1"></line>
+<text x="${padL - 8}" y="${(Number(gy) + 4).toFixed(1)}" font-size="11" text-anchor="end" fill="currentColor" opacity=".65">${esc(v.toLocaleString("en"))}</text>`;
+  });
+
+  // Label the ends and roughly the middle; every month would collide.
+  const every = Math.ceil(points.length / 6);
+  const xLabels = points
+    .map((p, i) =>
+      i % every === 0 || i === points.length - 1
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 10}" font-size="11" text-anchor="middle" fill="currentColor" opacity=".65">${esc(p.label)}</text>`
+        : "",
+    )
+    .join("");
+
+  const last = points[points.length - 1];
+  const lastPartial = last?.partial === true;
+  const dots = points
+    .map((p, i) => {
+      if (i !== points.length - 1) return "";
+      return `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="4.5"
+ fill="${lastPartial ? "var(--paper)" : "var(--accent)"}" stroke="var(--accent)" stroke-width="2"></circle>`;
+    })
+    .join("");
+
+  const unit = options.unit ?? "";
+  const label = `${points[0]?.label ?? ""} to ${last?.label ?? ""}: ${points[0]?.value.toLocaleString("en")} rising to ${last?.value.toLocaleString("en")}${unit}`;
+
+  return `<figure>
+<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(label)}">
+<title>${esc(label)}</title>
+${ticks.join("\n")}
+<path d="${area}" fill="var(--accent)" opacity=".13"></path>
+<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5"
+ stroke-linejoin="round" stroke-linecap="round"${lastPartial ? ' stroke-dasharray="none"' : ""}></path>
+${dots}
+${xLabels}
+</svg>
+${options.caption === undefined ? "" : `<figcaption>${esc(options.caption)}</figcaption>`}
+</figure>`;
+}
+
+/** The same series as a table — the accessible version, and the copyable one. */
+export function seriesTable(
+  points: ReadonlyArray<{ label: string; value: number; added?: number; partial?: boolean }>,
+  headers: { label: string; value: string; added?: string },
+): string {
+  return `<details><summary class="note">Show these numbers as a table</summary>
+<div class="scroll"><table>
+<thead><tr><th>${esc(headers.label)}</th>${headers.added === undefined ? "" : `<th class="num">${esc(headers.added)}</th>`}<th class="num">${esc(headers.value)}</th></tr></thead>
+<tbody>
+${points
+  .map(
+    (p) =>
+      `<tr><td>${esc(p.label)}${p.partial === true ? ' <span class="pill skip">partial</span>' : ""}</td>${
+        headers.added === undefined
+          ? ""
+          : `<td class="num">${p.added === undefined ? "\u2014" : esc(p.added.toLocaleString("en"))}</td>`
+      }<td class="num">${esc(p.value.toLocaleString("en"))}</td></tr>`,
+  )
+  .join("\n")}
+</tbody></table></div></details>`;
+}
+
 export function statGrid(stats: ReadonlyArray<{ n: string; k: string }>): string {
   return `<div class="grid">${stats
     .map(

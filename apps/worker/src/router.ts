@@ -26,6 +26,7 @@ import {
   leaderboardCount,
   letterCounts,
   recentChanges,
+  registryGrowth,
 } from "./queries.js";
 import { esc, type PageChrome } from "./web/layout.js";
 import {
@@ -126,12 +127,19 @@ export async function route(request: Request, env: Env): Promise<Response> {
         60,
       );
     }
-    const [h, candidates] = await Promise.all([
+    const [h, candidates, growth] = await Promise.all([
       headline(env, run.id),
       candidateDistribution(env, run.id),
+      registryGrowth(env),
     ]);
     return cacheable(
-      landingPage({ chrome, headline: h, candidates, runFinishedAt: run.finished_at }),
+      landingPage({
+        chrome,
+        headline: h,
+        candidates,
+        runFinishedAt: run.finished_at,
+        registryGrowth: growth,
+      }),
       HTML,
       600,
     );

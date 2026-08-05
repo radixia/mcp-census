@@ -225,6 +225,29 @@ export async function letterCounts(
   return Object.fromEntries(results.map((r) => [r.l, r.n]));
 }
 
+export interface RegistryGrowthRow {
+  readonly month: string;
+  readonly added: number;
+  readonly cumulative: number;
+  readonly partial: number;
+  readonly snapshot_date: string;
+}
+
+/**
+ * Monthly growth of the official MCP Registry.
+ *
+ * Somebody else's count of servers, not our count of reachable domains — see
+ * apps/worker/schema/0002. Populated by scripts/registry/growth.ts from a
+ * snapshot, so it changes only when the registry is re-pulled.
+ */
+export async function registryGrowth(env: Env): Promise<RegistryGrowthRow[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT month, added, cumulative, partial, snapshot_date
+       FROM registry_growth ORDER BY month`,
+  ).all<RegistryGrowthRow>();
+  return results;
+}
+
 export interface DomainDetail {
   readonly apex: string;
   readonly universe: string;

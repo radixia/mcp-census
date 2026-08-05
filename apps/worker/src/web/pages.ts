@@ -8,7 +8,17 @@
 
 import { CENSUS_VERSION, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/core";
 
-import { barChart, ctaCard, esc, type PageChrome, page, statGrid, statusPill } from "./layout.js";
+import {
+  areaChart,
+  barChart,
+  ctaCard,
+  esc,
+  type PageChrome,
+  page,
+  seriesTable,
+  statGrid,
+  statusPill,
+} from "./layout.js";
 
 /** Provenance of each candidate path, so the fragmentation chart is legible. */
 const CANDIDATE_LABELS: Record<string, string> = {
@@ -47,6 +57,13 @@ export function landingPage(data: {
   headline: HeadlineData;
   candidates: Array<{ candidate_id: string; n: number }>;
   runFinishedAt: string | null;
+  registryGrowth?: Array<{
+    month: string;
+    added: number;
+    cumulative: number;
+    partial: number;
+    snapshot_date: string;
+  }>;
 }): string {
   const h = data.headline;
   const cardTotal = data.candidates.reduce((n, c) => n + c.n, 0);
@@ -108,6 +125,38 @@ ${
     : `<p class="note">Last complete run: ${esc(data.runFinishedAt)}. Methodology ${esc(METHODOLOGY_VERSION)}.</p>`
 }
 
+${(() => {
+  const g = data.registryGrowth ?? [];
+  if (g.length < 2) return "";
+  const points = g.map((r) => ({
+    label: r.month.slice(2),
+    value: r.cumulative,
+    added: r.added,
+    partial: r.partial === 1,
+  }));
+  const first = g[0];
+  const last = g[g.length - 1];
+  if (first === undefined || last === undefined) return "";
+  const partialNote =
+    last.partial === 1
+      ? ` ${last.month} is still in progress at the snapshot date, so its bar is short by construction \u2014 the final point is drawn hollow for that reason.`
+      : "";
+  return `
+<h2>The ecosystem is growing much faster than it is reachable</h2>
+<p>Servers in the official MCP Registry, cumulative. This is the registry's own count,
+not ours \u2014 a different question from whether an agent can find any of them.</p>
+${areaChart(points, {
+  caption: `Cumulative registry entries, ${first.month} to ${last.month}. Snapshot ${last.snapshot_date}.${partialNote}`,
+})}
+<p>${esc(first.cumulative.toLocaleString("en"))} servers in ${esc(first.month)}, ${esc(last.cumulative.toLocaleString("en"))} by ${esc(last.month)}.
+Monthly additions went from ${esc((first.added ?? 0).toLocaleString("en"))} to ${esc(
+    (g[g.length - 2]?.added ?? 0).toLocaleString("en"),
+  )} in the last full month.
+Against that, <strong>${esc(pct(h.confirmed, h.assessed))}</strong> of the organisations the
+registry proves run a server answer a handshake from their own domain.</p>
+${seriesTable(points, { label: "Month", added: "New servers", value: "Cumulative" })}
+`;
+})()}
 ${ctaCard(data.chrome)}
 `;
 
