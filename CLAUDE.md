@@ -187,7 +187,7 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 | 4 | Full census over Universe R + D | **done** 2026-08-05 — 7,421 assessed, in D1 as run 3 |
 | 5 | Shadow MCP classification | **partial** — see below |
 | 6 | Public site, live at www.radixia.ai/census/ | **done** 2026-08-05 |
-| 7 | Data release, Parquet, Zenodo | tooling done, no release cut |
+| 7 | Data release, Parquet, Zenodo | **release cut** 2026-08-05, downloadable at `/census/data`; Zenodo deposition still needs an account |
 | 8 | Conference mode | not started |
 
 Work strictly in order. Stop at each phase boundary, show Marco, wait for
@@ -202,7 +202,8 @@ approval, and commit with a real message.
    the count must not be quoted. See `docs/SHADOW-2026-08-05.md`.
 3. **Seven `inferred` domains in Universe D** need hand-checking before any
    output names those companies.
-4. **Zenodo deposition** — metadata is generated; depositing needs an account.
+4. **Zenodo deposition** — `zenodo.json` is generated and published in the
+   release; depositing it needs Marco's account.
 5. **Tranco licensing** — Tranco aggregates Cloudflare Radar under **CC BY-NC
    4.0** (non-commercial); we intend CC-BY-4.0 output from a commercial
    consultancy. Resolve **before** Phase 4 freezes an input list; re-freezing

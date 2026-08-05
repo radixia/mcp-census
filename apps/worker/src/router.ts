@@ -7,6 +7,7 @@
  */
 
 import {
+  CANDIDATES_VERSION,
   CENSUS_BASE_PATH,
   censusUrl,
   METHODOLOGY_VERSION,
@@ -91,6 +92,49 @@ export async function route(request: Request, env: Env): Promise<Response> {
     const key = env.THEME_STORAGE_KEY;
     if (key === undefined || key === "") return new Response("Not found", { status: 404 });
     return cacheable(themeScript(key), "text/javascript; charset=utf-8", 86400);
+  }
+
+  // Release downloads, streamed from R2.
+  //
+  // An allowlist of filenames rather than a pass-through: the bucket also holds
+  // per-scan evidence blobs, and a route that forwarded any key would publish
+  // them. Releases are immutable once cut, so they are cached hard.
+  const release = /^\/data\/(\d{4}-\d{2}-\d{2})\/([\w.-]+)$/.exec(path);
+  if (release !== null) {
+    const [, date, file] = release;
+    const ALLOWED = new Set([
+      "summary.json",
+      "census.csv",
+      "census.jsonl.gz",
+      "universe.csv",
+      "to-parquet.sql",
+      "README.md",
+      "zenodo.json",
+    ]);
+    if (file === undefined || !ALLOWED.has(file)) {
+      return notFound("That is not a file in a census release.", chrome);
+    }
+    const object = await env.ARTIFACTS.get(`releases/${date}/${file}`);
+    if (object === null)
+      return notFound(`There is no ${esc(file)} in the ${esc(date)} release.`, chrome);
+
+    const TYPES: Record<string, string> = {
+      ".json": "application/json; charset=utf-8",
+      ".csv": "text/csv; charset=utf-8",
+      ".gz": "application/gzip",
+      ".sql": "text/plain; charset=utf-8",
+      ".md": "text/markdown; charset=utf-8",
+    };
+    const ext = file.slice(file.lastIndexOf("."));
+    return new Response(object.body, {
+      status: 200,
+      headers: {
+        "content-type": TYPES[ext] ?? "application/octet-stream",
+        // Immutable by policy: a correction ships as a new dated release.
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-disposition": `attachment; filename="mcp-census-${date}-${file}"`,
+      },
+    });
   }
 
   if (path === "/health") {
@@ -316,6 +360,35 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
 const REPO = "https://github.com/radixia/mcp-census";
 
+/**
+ * The newest cut release.
+ *
+ * Hard-coded rather than derived from R2, because a release is a deliberate
+ * editorial act: files land in the bucket first and are announced here second,
+ * so an interrupted upload cannot publish a half-release. Sizes are stated so a
+ * reader can tell a truncated download from a complete one.
+ */
+const LATEST_RELEASE = {
+  date: "2026-08-05",
+  domains: 7422,
+  assessed: 7421,
+  methodology: METHODOLOGY_VERSION,
+  candidates: CANDIDATES_VERSION,
+  files: [
+    { name: "summary.json", what: "The headline numbers and per-check pass rates", size: "805 B" },
+    { name: "census.csv", what: "One row per domain: score, band, every check", size: "800 KB" },
+    {
+      name: "census.jsonl.gz",
+      what: "Per-domain rows with full evidence, one JSON object per line",
+      size: "1.6 MB",
+    },
+    { name: "universe.csv", what: "The frozen population, with provenance", size: "437 KB" },
+    { name: "to-parquet.sql", what: "DuckDB script: any of the above to Parquet", size: "621 B" },
+    { name: "README.md", what: "What is in the release and how to cite it", size: "1.7 KB" },
+    { name: "zenodo.json", what: "Deposition metadata for archiving", size: "1.1 KB" },
+  ],
+} as const;
+
 const STATIC_PAGES: Record<string, (chrome: PageChrome) => string> = {
   "/methodology": (chrome) =>
     staticPage({
@@ -394,8 +467,34 @@ pnpm install &amp;&amp; pnpm test</pre>
 download dates, and the methodology version that produced each row. Releases are immutable
 snapshots; corrections appear in the next release rather than rewriting a citable one.</p>
 
+<h2>Download the ${LATEST_RELEASE.date} release</h2>
+<p>${esc(LATEST_RELEASE.domains.toLocaleString("en"))} domains, ${esc(
+        LATEST_RELEASE.assessed.toLocaleString("en"),
+      )} assessed. Methodology ${esc(LATEST_RELEASE.methodology)}, candidate set ${esc(
+        LATEST_RELEASE.candidates,
+      )}.
+Immutable: a correction ships as a new dated release rather than rewriting this one.</p>
+
+<div class="scroll"><table>
+<thead><tr><th>File</th><th>What it is</th><th class="num">Size</th></tr></thead>
+<tbody>
+${LATEST_RELEASE.files
+  .map(
+    (f) => `<tr>
+<td><a href="${esc(censusUrl(`/data/${LATEST_RELEASE.date}/${f.name}`))}"><code>${esc(f.name)}</code></a></td>
+<td>${esc(f.what)}</td>
+<td class="num">${esc(f.size)}</td>
+</tr>`,
+  )
+  .join("\n")}
+</tbody></table></div>
+
+<p class="note">The per-domain rows are gzipped JSONL rather than JSON: same data, one object per
+line, and 33.5&nbsp;MB becomes 1.6&nbsp;MB. <code>to-parquet.sql</code> turns any of it into Parquet
+with DuckDB, so nobody has to trust a query service of ours to re-derive a statistic.</p>
+
 <p><a href="${REPO}/tree/main/data/universe">Frozen universes</a> ·
-<a href="${REPO}/tree/main/data/releases">Releases</a> ·
+<a href="${REPO}/tree/main/data/releases">Releases in git</a> ·
 <a href="${REPO}">The code</a></p>`,
     }),
 

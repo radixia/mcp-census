@@ -1,16 +1,20 @@
 # Methodology
 
-**Version `0.2.0-draft` · last revised 2026-08-05**
+**Version `0.2.0` · last revised 2026-08-05**
 
 This document is the single most important artifact in the project. It is
 versioned, and every published row carries the methodology version that produced
 it. No check may be added, removed, or have its semantics changed without a
 revision here and a bump to `METHODOLOGY_VERSION`.
 
-> **Status: draft.** No scores have been published. The scoring formula below is
-> published *before* any score, deliberately, so that it can be argued with before
-> it is used. The population and headline framing are still under review — see
-> [Open questions](#open-questions).
+> **Status: in use.** The scoring formula was published *before* any score, so
+> that it could be argued with before it was used; that window is now closed and
+> the [2026-08-05 release](https://www.radixia.ai/census/data) cites this version.
+> A release that calls itself immutable cannot cite a draft.
+>
+> The limitations below are written from measurement rather than expectation — the
+> first full-population census has run. Open questions that remain open are still
+> listed as such, and answering one is a revision, not an edit.
 
 ---
 
@@ -268,6 +272,30 @@ The things that weaken our own findings. This section is not a formality.
    conflict-of-interest note above.
 13. **Input-list licensing is unresolved.** See below.
 
+16. **Two "no discovery signal" numbers exist, and they differ by 16 rows.** The
+    landing page counts domains where none of `D1`–`D4` passed (4,495 of 7,421 in
+    the 2026-08-05 release). The band distribution counts `Absent` plus
+    `Text-only`, which is a score threshold (4,511). The gap is domains whose only
+    discovery signal is `D3`'s `405` — worth 20 points, not the 35 a published
+    document earns — that then score at or under 30 because they also lack
+    `F2`. Both are correct for their own question, both round to 61%, and neither
+    is a correction of the other. Stated here because a reader who spots two
+    numbers for one idea is right to ask.
+17. **The 2026-08-05 release was produced by the local runner, not the Worker
+    queue.** The probe code is identical — the same `packages/core`, so the rows
+    are the same rows — but the crawl was driven from a laptop because a
+    7,400-domain backfill is resumable and watchable that way, and the queue path
+    is not. The nightly cron and queue are the production path and are what
+    produce every subsequent run. We say so rather than implying the first dataset
+    came off the edge.
+18. **The registry growth chart is not our measurement.** Cumulative entries in
+    the official MCP Registry, keyed on each entry's own `publishedAt`, from a
+    snapshot taken on the release date. It answers how fast the ecosystem is
+    growing, which is a different question from how much of it an agent can reach,
+    and the two are never combined into one series. The current month is always
+    incomplete and is flagged as such: a snapshot on the 5th puts five days beside
+    thirty, which renders as a collapse if left unmarked.
+
 ## Open questions
 
 These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
@@ -293,4 +321,4 @@ These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
 |---|---|---|
 | `0.1.0-draft` | 2026-08-04 | Initial draft. Checks defined, scoring published, nothing measured. |
 | `0.1.0-draft` | 2026-08-05 | Editorial only, no change to checks or scoring. Open questions reworded to scope rather than framing. |
-| `0.2.0-draft` | 2026-08-05 | Checks `D1`–`D4`, `F1`, `F2` implemented. Scoring split the single discovery tier into "published document" (35) and "endpoint-shaped only" (20), so an unconfirmed `D3` no longer counts the same as a card. Added the explicit refuse-to-score rules. Nothing measured yet. |
+| `0.2.0` | 2026-08-05 | Checks `D1`–`D4`, `F1`, `F2` implemented. Scoring split the single discovery tier into "published document" (35) and "endpoint-shaped only" (20), so an unconfirmed `D3` no longer counts the same as a card. Added the explicit refuse-to-score rules. Finalised the same day the first full census over Universe R ran (7,422 domains, 7,421 assessed) and the limitations were rewritten from what it found: the two "no discovery signal" definitions, the local-runner provenance of the first release, and the registry growth series being the registry's count rather than ours. |

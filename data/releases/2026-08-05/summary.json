@@ -1,0 +1,41 @@
+{
+  "release": "2026-08-05",
+  "methodologyVersion": "0.2.0",
+  "candidatesVersion": "2026-08-04",
+  "domains": 7422,
+  "assessed": 7421,
+  "unassessed": 1,
+  "headline": {
+    "noDiscoverySignal": 4495,
+    "noDiscoverySignalPct": 60.6,
+    "publishesServerCard": 1507,
+    "publishesServerCardPct": 20.3,
+    "confirmedHandshake": 1626,
+    "confirmedHandshakePct": 21.9
+  },
+  "byCheck": {
+    "D1": 1507,
+    "D2": 60,
+    "D3": 1352,
+    "D4": 1211,
+    "D5": 1626,
+    "D6": 615,
+    "Q1": 483,
+    "F1": 4106,
+    "F2": 2472
+  },
+  "candidateDistribution": {
+    "mcp-server-card-json": 866,
+    "mcp-json": 839,
+    "mcp-bare": 157,
+    "ai-catalog": 127,
+    "mcp-server-serra": 21,
+    "server-card-endpoint-relative": 7
+  },
+  "protocolEra": {
+    "legacy": 1084,
+    "modern": 542
+  },
+  "methodologyVersionInRows": "0.2.0-draft",
+  "methodologyVersionNote": "Rows carry 0.2.0-draft because that was the value of METHODOLOGY_VERSION when the crawl ran. The document was finalised to 0.2.0 the same day, changing its status only: no check was added, removed, or altered in semantics, so the rows are valid under 0.2.0. Recorded rather than rewritten, because editing measured rows to match a later document is how a dataset stops being evidence."
+}

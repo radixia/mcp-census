@@ -1,0 +1,28 @@
+{
+  "title": "MCP Census 2026-08-05: discoverability of Model Context Protocol servers",
+  "upload_type": "dataset",
+  "description": "Per-domain measurements of whether an AI agent could discover and connect to an MCP server for each of 7422 organisations that provably run one. Population derived from the official MCP Registry. Methodology 0.2.0-draft, candidate set 2026-08-04. Headline: 60.6% of assessed organisations publish no discovery signal an agent could use. Conflict of interest: the authors' own domain radixia.ai is included in the measured population rather than excluded, and is disclosed in the methodology.",
+  "creators": [
+    {
+      "name": "D'Angelo, Marco",
+      "affiliation": "Radixia S.r.l."
+    }
+  ],
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "keywords": [
+    "Model Context Protocol",
+    "MCP",
+    "AI agents",
+    "web measurement",
+    "service discovery",
+    "open data"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/radixia/mcp-census",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

@@ -20,7 +20,9 @@
     "format": "biome check --write .",
     "pilot": "pnpm --filter @mcp-census/core build && pnpm --filter @mcp-census/scripts run pilot",
     "theme:sync": "cd scripts && node theme/sync-radixia.ts",
-    "theme:check": "cd scripts && node theme/sync-radixia.ts --check"
+    "theme:check": "cd scripts && node theme/sync-radixia.ts --check",
+    "release": "cd scripts && node export/release.ts",
+    "registry:growth": "cd scripts && node registry/growth.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

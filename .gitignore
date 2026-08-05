@@ -25,3 +25,12 @@ NOTES.local.md
 # Pilot inputs and outputs. The Tranco list is not redistributed; the sample is
 # reproducible from scripts/pilot/sample.ts plus the list id recorded in its header.
 scripts/out/
+
+# Release artifacts that are redundant with census.jsonl.gz.
+#
+# The monolithic census.json (52 MB) and the uncompressed census.jsonl (34 MB)
+# carry exactly the same rows as the 1.6 MB gzipped JSONL, which is what R2 serves
+# and what the /data page links. Committing 86 MB of duplicate data to make a
+# release "complete" would only make the repository expensive to clone.
+data/releases/*/census.json
+data/releases/*/census.jsonl

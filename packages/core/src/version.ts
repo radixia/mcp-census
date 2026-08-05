@@ -5,7 +5,12 @@
  *
  * No check may change without a corresponding METHODOLOGY.md revision.
  */
-export const METHODOLOGY_VERSION = "0.2.0-draft";
+/**
+ * Bumped from 0.2.0-draft on 2026-08-05, when the first full-population census
+ * ran and its limitations were written from measurement rather than expectation.
+ * A release that calls itself immutable cannot cite a draft.
+ */
+export const METHODOLOGY_VERSION = "0.2.0";
 
 /** Crawler build identity. Surfaced in the User-Agent. */
 export const CENSUS_VERSION = "0.1.0";
