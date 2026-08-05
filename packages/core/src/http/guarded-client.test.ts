@@ -217,6 +217,47 @@ describe("rate limiting and retries", () => {
     expect(c.deps.elapsed()).toBeGreaterThanOrEqual(7000);
   });
 
+  it("does not retry a name that does not resolve", async () => {
+    // At census scale this dominates: most domains have no mcp.* subdomain, and
+    // retrying each nonexistent one costs three requests and six seconds of
+    // backoff to re-learn what DNS already said.
+    const c = client({
+      "https://example.com/robots.txt": { body: "" },
+      "https://mcp.example.com/robots.txt": { throws: "ENOTFOUND: fetch failed" },
+    });
+
+    const outcome = await c.client.fetchPath("/mcp", "GET", "mcp.example.com");
+
+    expect(outcome).toMatchObject({ outcome: "transport_error" });
+    expect(c.http.urls().filter((u) => u.includes("mcp.example.com"))).toHaveLength(1);
+  });
+
+  it("answers later probes to an unresolvable host without touching the network", async () => {
+    const c = client({
+      "https://example.com/robots.txt": { body: "" },
+      "https://mcp.example.com/robots.txt": { throws: "ENOTFOUND: fetch failed" },
+    });
+
+    await c.client.fetchPath("/", "GET", "mcp.example.com");
+    const before = c.http.calls.length;
+    await c.client.fetchPath("/mcp", "GET", "mcp.example.com");
+
+    expect(c.http.calls.length).toBe(before);
+  });
+
+  it("still retries a transient failure", async () => {
+    const c = client({
+      "https://example.com/robots.txt": { body: "" },
+      "https://example.com/llms.txt": { throws: "ECONNRESET: socket hang up" },
+    });
+
+    await c.client.fetchPath("/llms.txt");
+
+    expect(c.http.urls().filter((u) => u.endsWith("/llms.txt"))).toHaveLength(
+      POLITENESS.maxRetries + 1,
+    );
+  });
+
   it("reports a connection failure as a transport error, not a negative finding", async () => {
     const c = client({
       "https://example.com/robots.txt": { body: "" },

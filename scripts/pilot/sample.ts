@@ -32,9 +32,39 @@ const EUROPEAN = 150;
 const ITALIAN = 100;
 
 const EUROPEAN_TLDS = new Set([
-  "de", "fr", "es", "nl", "se", "pl", "be", "at", "dk", "fi", "no", "ie", "pt",
-  "gr", "cz", "ch", "uk", "eu", "hu", "ro", "sk", "si", "hr", "bg", "lt", "lv",
-  "ee", "lu", "is", "mt", "cy", "rs", "ua",
+  "de",
+  "fr",
+  "es",
+  "nl",
+  "se",
+  "pl",
+  "be",
+  "at",
+  "dk",
+  "fi",
+  "no",
+  "ie",
+  "pt",
+  "gr",
+  "cz",
+  "ch",
+  "uk",
+  "eu",
+  "hu",
+  "ro",
+  "sk",
+  "si",
+  "hr",
+  "bg",
+  "lt",
+  "lv",
+  "ee",
+  "lu",
+  "is",
+  "mt",
+  "cy",
+  "rs",
+  "ua",
 ]);
 
 /**
@@ -43,14 +73,45 @@ const EUROPEAN_TLDS = new Set([
  * is exactly the criticism levelled at convenience samples.
  */
 const INFRASTRUCTURE = [
-  "gtld-servers.net", "root-servers.net", "nstld.com", "in-addr.arpa", "ip6.arpa",
-  "akamai.net", "akamaiedge.net", "akadns.net", "akamaitechnologies.com",
-  "cloudfront.net", "amazonaws.com", "azureedge.net", "azure.com", "trafficmanager.net",
-  "googleapis.com", "gstatic.com", "ggpht.com", "googleusercontent.com", "googlevideo.com",
-  "doubleclick.net", "googlesyndication.com", "googletagmanager.com", "google-analytics.com",
-  "windowsupdate.com", "ntp.org", "cloudflare-dns.com", "fbcdn.net", "cdninstagram.com",
-  "licdn.com", "twimg.com", "ytimg.com", "aaplimg.com", "apple-dns.net",
-  "edgekey.net", "edgesuite.net", "llnwd.net", "cdn77.org", "fastly.net", "fastlylb.net",
+  "gtld-servers.net",
+  "root-servers.net",
+  "nstld.com",
+  "in-addr.arpa",
+  "ip6.arpa",
+  "akamai.net",
+  "akamaiedge.net",
+  "akadns.net",
+  "akamaitechnologies.com",
+  "cloudfront.net",
+  "amazonaws.com",
+  "azureedge.net",
+  "azure.com",
+  "trafficmanager.net",
+  "googleapis.com",
+  "gstatic.com",
+  "ggpht.com",
+  "googleusercontent.com",
+  "googlevideo.com",
+  "doubleclick.net",
+  "googlesyndication.com",
+  "googletagmanager.com",
+  "google-analytics.com",
+  "windowsupdate.com",
+  "ntp.org",
+  "cloudflare-dns.com",
+  "fbcdn.net",
+  "cdninstagram.com",
+  "licdn.com",
+  "twimg.com",
+  "ytimg.com",
+  "aaplimg.com",
+  "apple-dns.net",
+  "edgekey.net",
+  "edgesuite.net",
+  "llnwd.net",
+  "cdn77.org",
+  "fastly.net",
+  "fastlylb.net",
 ];
 
 function isInfrastructure(domain: string): boolean {
@@ -72,7 +133,10 @@ async function main(): Promise<void> {
     const comma = line.indexOf(",");
     if (comma <= 0) continue;
     const rank = Number.parseInt(line.slice(0, comma), 10);
-    const domain = line.slice(comma + 1).trim().toLowerCase();
+    const domain = line
+      .slice(comma + 1)
+      .trim()
+      .toLowerCase();
     if (!Number.isFinite(rank) || domain === "" || isInfrastructure(domain)) continue;
     ranked.push({ rank, domain });
   }

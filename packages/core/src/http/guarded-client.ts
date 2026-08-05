@@ -66,6 +66,13 @@ export class GuardedHttpClient {
    * first contact with a host and cached for the lifetime of the probe.
    */
   readonly #robots = new Map<string, RobotsTxt>();
+  /**
+   * Hosts whose name does not resolve. Every later probe against them is
+   * answered from here instead of over the network — the conventional
+   * subdomains rarely exist, and each one would otherwise cost several
+   * pointless requests.
+   */
+  readonly #unresolvable = new Set<string>();
   #lastRequestAt = 0;
   #requestCount = 0;
   #endpointPath: string | undefined;
@@ -155,7 +162,14 @@ export class GuardedHttpClient {
     assertPathAllowed(path, pathContext);
     assertHttpMethodAllowed(method, { discoveryEstablished: this.#discoveryEstablished });
 
+    if (this.#unresolvable.has(host)) {
+      return { outcome: "transport_error", error: `${host} does not resolve` };
+    }
+
     const robots = await this.loadRobots(host);
+    if (this.#unresolvable.has(host)) {
+      return { outcome: "transport_error", error: `${host} does not resolve` };
+    }
     if (!isAllowed(robots, ROBOTS_TOKEN, path)) {
       return { outcome: "skipped_by_robots", path };
     }
@@ -212,15 +226,20 @@ export class GuardedHttpClient {
         this.#requestCount += 1;
         response = await this.deps.fetch(request, fetchOptions);
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        // A name that does not resolve will not resolve on the next attempt.
+        if (isNameResolutionError(message)) {
+          this.#unresolvable.add(new URL(request.url).hostname);
+          return { outcome: "transport_error", error: message };
+        }
+
         if (attempt < POLITENESS.maxRetries) {
           attempt += 1;
           await this.deps.sleep(backoffMs(attempt));
           continue;
         }
-        return {
-          outcome: "transport_error",
-          error: error instanceof Error ? error.message : String(error),
-        };
+        return { outcome: "transport_error", error: message };
       }
 
       if (
@@ -305,6 +324,21 @@ export class GuardedHttpClient {
     }
     this.#lastRequestAt = this.deps.now();
   }
+}
+
+/**
+ * Errors that mean "this name does not exist", as opposed to "this failed and
+ * might not next time".
+ *
+ * Retrying a name that does not resolve is pure waste, and at census scale it
+ * dominates the crawl: most domains have no `mcp.` or `api.` subdomain, so the
+ * majority of our requests would otherwise be three attempts and six seconds of
+ * backoff spent confirming something DNS already told us once.
+ */
+const NAME_RESOLUTION_ERROR = /ENOTFOUND|EAI_AGAIN|ERR_NAME_NOT_RESOLVED|getaddrinfo/i;
+
+export function isNameResolutionError(message: string): boolean {
+  return NAME_RESOLUTION_ERROR.test(message);
 }
 
 function backoffMs(attempt: number): number {

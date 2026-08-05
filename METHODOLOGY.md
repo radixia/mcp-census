@@ -196,18 +196,30 @@ The things that weaken our own findings. This section is not a formality.
    ones with sophisticated agent policies.
 5. **`D3`'s `405` signal has false positives** — any POST-only endpoint at a
    conventional path looks the same.
-6. **Discovery candidates are a moving target.** We probe eight; a mechanism
+6. **`.well-known` candidates are probed on the apex only.** When `D3` locates an
+   endpoint on `mcp.<apex>`, we probe the endpoint-relative card and the RFC 9728
+   document on that host, but not the full `.well-known` candidate set. A server
+   card published only at `https://mcp.<apex>/.well-known/mcp.json` is therefore
+   missed. This affects only domains that already pass `D3`, so it biases the
+   *mechanism distribution* rather than the headline hit rate. To be fixed before
+   the full census.
+7. **A `200` catch-all can hide a real negative.** Some hosts answer every
+   unmatched path with `200` and a human-readable page. We reject those (they are
+   neither JSON nor a valid metadata document), but a domain configured this way
+   cannot be distinguished from one that has genuinely published nothing, and it
+   is invisible to any scanner that only checks status codes.
+8. **Discovery candidates are a moving target.** We probe eight; a mechanism
    invented after our freeze date will read as absent. SEP-2127 could land between
    our run and our publication.
-7. **Shadow MCP misclassifies servers written by employees under personal
+9. **Shadow MCP misclassifies servers written by employees under personal
    namespaces** as third-party. This is why the claim is "you don't know about it",
    not "you didn't write it".
-8. **Registry coverage is partial and unstable.** The official registry is in
+10. **Registry coverage is partial and unstable.** The official registry is in
    preview with no durability guarantee; Smithery entries cannot be
    namespace-verified the same way; Glama and PulseMCP are not yet assessed.
-9. **The authors have a commercial interest** in this subject mattering. See the
+11. **The authors have a commercial interest** in this subject mattering. See the
    conflict-of-interest note above.
-10. **Input-list licensing is unresolved.** See below.
+12. **Input-list licensing is unresolved.** See below.
 
 ## Open questions
 

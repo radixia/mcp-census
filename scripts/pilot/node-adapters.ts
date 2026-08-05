@@ -38,10 +38,26 @@ export function nodeFetch(): HttpFetch {
       const body = raw.length > 512 * 1024 ? raw.slice(0, 512 * 1024) : raw;
 
       return { status: response.status, headers, body, url: response.url || request.url };
+    } catch (error) {
+      // undici reports everything as `TypeError: fetch failed` and hides the
+      // real reason in `cause`. Core needs the code to tell a deterministic
+      // "this host does not exist" from a transient failure worth retrying.
+      throw new Error(errorCode(error), { cause: error });
     } finally {
       clearTimeout(timer);
     }
   };
+}
+
+function errorCode(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause as { code?: string; message?: string } | undefined;
+    const code = cause?.code;
+    if (code !== undefined) return `${code}: ${error.message}`;
+    if (error.name === "AbortError" || error.name === "TimeoutError") return `ETIMEDOUT: timeout`;
+    return error.message;
+  }
+  return String(error);
 }
 
 export function nodeResolveTxt(timeoutMs = 5000): ResolveTxt {
