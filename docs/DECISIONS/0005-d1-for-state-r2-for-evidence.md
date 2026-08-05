@@ -14,11 +14,22 @@ of three runs rather than estimating:
 | Of which `F2` alone | **2,035 bytes**, nearly half |
 | A full Universe R run (7,377 domains) | ~32 MB |
 | Daily cadence | **~11.6 GB/year** |
-| D1 maximum database size | **10 GB** |
 
-A year of daily full-fidelity crawling does not fit, and Universe R grows as the
-registry does. `F2` is the worst offender: twenty crawler tokens serialised per
-domain per day, `not_mentioned` for roughly three quarters of them.
+Against the plan limits, read off the Cloudflare dashboard on 2026-08-05:
+
+| | D1 | R2 |
+|---|---|---|
+| Free tier | 5 GB total account storage | 10 GB |
+| Paid storage | **$0.75 / GB-month** | **$0.015 / GB-month** |
+
+Two things follow. Daily full-fidelity evidence would exhaust D1's *free* 5 GB
+in roughly two months, and on the paid plan **D1 storage costs 50× what R2
+does** — 11.6 GB/year is about $8.70/month and climbing in D1, versus about
+$0.17/month in R2. D1 also bills per row read and written, so blobs inflate the
+read path as well as the bill.
+
+`F2` is the worst offender: twenty crawler tokens serialised per domain per day,
+`not_mentioned` for roughly three quarters of them.
 
 Meanwhile the pages that matter — leaderboard, per-domain permalink, adoption
 chart — read only status, score and history. Evidence is opened on one page view
