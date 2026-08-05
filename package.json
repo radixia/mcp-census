@@ -18,7 +18,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "pilot": "pnpm --filter @mcp-census/scripts run pilot"
+    "pilot": "pnpm --filter @mcp-census/core build && pnpm --filter @mcp-census/scripts run pilot"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

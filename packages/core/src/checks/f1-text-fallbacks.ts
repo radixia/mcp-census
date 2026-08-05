@@ -22,7 +22,8 @@ interface FallbackProbe {
     | "html_catch_all"
     | "empty"
     | "skipped_by_robots"
-    | "transport_error";
+    | "transport_error"
+    | "redirected_off_apex";
   readonly status?: number;
   readonly bytes?: number;
   readonly contentType?: string;
@@ -44,6 +45,10 @@ export async function checkTextFallbacks(
     }
     if (outcome.outcome === "transport_error") {
       probes.push({ path, result: "transport_error" });
+      continue;
+    }
+    if (outcome.outcome === "redirect_off_apex") {
+      probes.push({ path, result: "redirected_off_apex" });
       continue;
     }
 

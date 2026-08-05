@@ -33,7 +33,8 @@ interface EndpointProbe {
     | "not_found"
     | "other_status"
     | "skipped_by_robots"
-    | "transport_error";
+    | "transport_error"
+    | "redirected_off_apex";
   readonly status?: number;
   readonly jsonRpcErrorCode?: number;
 }
@@ -74,6 +75,10 @@ export async function checkConventionalEndpoint(
     if (outcome.outcome === "transport_error") {
       // Overwhelmingly a subdomain that does not resolve. Expected, not an error.
       probes.push({ ...base, result: "transport_error" });
+      continue;
+    }
+    if (outcome.outcome === "redirect_off_apex") {
+      probes.push({ ...base, result: "redirected_off_apex" });
       continue;
     }
 

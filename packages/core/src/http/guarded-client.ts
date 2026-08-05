@@ -17,10 +17,10 @@ import {
   assertNoCredentials,
   assertNotOptedOut,
   assertPathAllowed,
-  assertRedirectAllowed,
   buildDiscoveryHeaders,
   buildMcpRequestHeaders,
   type CrawlerIdentity,
+  isWithinApex,
   POLITENESS,
 } from "../politeness.js";
 import {
@@ -44,6 +44,13 @@ export const ROBOTS_TOKEN = "MCPCensus";
 export type ProbeOutcome =
   | { readonly outcome: "response"; readonly response: HttpResponse }
   | { readonly outcome: "skipped_by_robots"; readonly path: string }
+  /**
+   * The site redirected us off its own apex — commonly an auth wall bouncing
+   * every path to an identity provider. We decline to follow, but this is a
+   * fact about the domain rather than an error, so it is an outcome the checks
+   * record, not something that aborts the probe.
+   */
+  | { readonly outcome: "redirect_off_apex"; readonly to: string }
   | { readonly outcome: "transport_error"; readonly error: string };
 
 export interface GuardedClientDeps {
@@ -234,7 +241,12 @@ export class GuardedHttpClient {
           return { outcome: "transport_error", error: message };
         }
 
-        if (attempt < POLITENESS.maxRetries) {
+        // A blackholed host times out identically every time. Two retries at
+        // ten seconds each is thirty seconds spent confirming one fact, and at
+        // census scale that is most of the crawl.
+        const budget = isTimeoutError(message) ? 1 : POLITENESS.maxRetries;
+
+        if (attempt < budget) {
           attempt += 1;
           await this.deps.sleep(backoffMs(attempt));
           continue;
@@ -278,9 +290,12 @@ export class GuardedHttpClient {
 
     const target = new URL(location, request.url);
 
-    // Throws if the target is off-apex: a decision we refuse to make, rather
-    // than a transport failure to paper over.
-    assertRedirectAllowed({ to: target.toString(), apex: this.context.apex, hop: 1 });
+    // Checked rather than asserted: leaving the apex is something sites do all
+    // the time, so it is reported, not treated as a violation. The assertion
+    // remains the guard for any other caller.
+    if (!isWithinApex(target.hostname, this.context.apex)) {
+      return { outcome: "redirect_off_apex", to: target.hostname };
+    }
 
     if (checkRobots) {
       const robots = await this.loadRobots(target.hostname);
@@ -339,6 +354,12 @@ const NAME_RESOLUTION_ERROR = /ENOTFOUND|EAI_AGAIN|ERR_NAME_NOT_RESOLVED|getaddr
 
 export function isNameResolutionError(message: string): boolean {
   return NAME_RESOLUTION_ERROR.test(message);
+}
+
+const TIMEOUT_ERROR = /ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|AbortError|TimeoutError|timeout/i;
+
+export function isTimeoutError(message: string): boolean {
+  return TIMEOUT_ERROR.test(message);
 }
 
 function backoffMs(attempt: number): number {

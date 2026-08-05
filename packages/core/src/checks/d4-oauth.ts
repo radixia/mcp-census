@@ -29,7 +29,13 @@ interface OauthProbe {
   readonly candidateId: string;
   readonly host: string;
   readonly path: string;
-  readonly result: "found" | "not_found" | "skipped_by_robots" | "transport_error" | "malformed";
+  readonly result:
+    | "found"
+    | "not_found"
+    | "skipped_by_robots"
+    | "transport_error"
+    | "malformed"
+    | "redirected_off_apex";
   readonly status?: number;
   readonly authorizationServers?: readonly string[];
   readonly resourceMetadataHint?: string;
@@ -103,6 +109,10 @@ export async function checkOauthProtectedResource(
     }
     if (outcome.outcome === "transport_error") {
       probes.push({ ...base, result: "transport_error" });
+      continue;
+    }
+    if (outcome.outcome === "redirect_off_apex") {
+      probes.push({ ...base, result: "redirected_off_apex" });
       continue;
     }
 

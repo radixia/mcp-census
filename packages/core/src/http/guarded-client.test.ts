@@ -143,7 +143,9 @@ describe("redirects", () => {
     expect(outcome).toMatchObject({ outcome: "response", response: { body: "the real thing" } });
   });
 
-  it("refuses to leave the apex", async () => {
+  it("reports leaving the apex as an outcome, not a crash", async () => {
+    // Auth-walled sites bounce every path to an identity provider. That is a
+    // fact about the domain; throwing would abort the whole probe.
     const c = client({
       "https://example.com/robots.txt": { body: "" },
       "https://example.com/llms.txt": {
@@ -152,7 +154,8 @@ describe("redirects", () => {
       },
     });
 
-    await expect(c.client.fetchPath("/llms.txt")).rejects.toThrow(/off-apex/);
+    const outcome = await c.client.fetchPath("/llms.txt");
+    expect(outcome).toEqual({ outcome: "redirect_off_apex", to: "cdn.elsewhere.test" });
   });
 
   it("allows a redirect to a subdomain of the apex", async () => {

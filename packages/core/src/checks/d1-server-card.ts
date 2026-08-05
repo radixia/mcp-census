@@ -22,7 +22,8 @@ export interface CandidateProbe {
     | "not_found"
     | "skipped_by_robots"
     | "transport_error"
-    | "not_a_document";
+    | "not_a_document"
+    | "redirected_off_apex";
   readonly status?: number;
   readonly documentKeys?: readonly string[];
   readonly error?: string;
@@ -67,6 +68,10 @@ export async function checkServerCard(
     }
     if (outcome.outcome === "transport_error") {
       probes.push({ ...base, result: "transport_error", error: outcome.error });
+      continue;
+    }
+    if (outcome.outcome === "redirect_off_apex") {
+      probes.push({ ...base, result: "redirected_off_apex", error: outcome.to });
       continue;
     }
 
