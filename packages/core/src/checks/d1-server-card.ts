@@ -14,6 +14,7 @@ import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
 export interface CandidateProbe {
   readonly candidateId: string;
+  readonly host: string;
   readonly path: string;
   readonly normativity: string;
   readonly result:
@@ -45,9 +46,17 @@ export async function checkServerCard(
       ...(endpointPath === undefined ? {} : { endpointPath }),
     });
 
-    const outcome = await deps.client.fetchPath(path);
+    // An endpoint-relative card belongs to the server that serves the endpoint,
+    // which is often `mcp.<apex>`. Asking the apex for it asks the wrong host.
+    const host =
+      candidate.kind === "endpoint-relative"
+        ? (deps.client.endpointHost ?? context.apex)
+        : context.apex;
+
+    const outcome = await deps.client.fetchPath(path, "GET", host);
     const base = {
       candidateId: candidate.id,
+      host,
       path,
       normativity: candidate.normativity,
     } as const;

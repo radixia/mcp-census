@@ -69,6 +69,7 @@ export class GuardedHttpClient {
   #lastRequestAt = 0;
   #requestCount = 0;
   #endpointPath: string | undefined;
+  #endpointHost: string | undefined;
   #discoveryEstablished = false;
 
   constructor(
@@ -88,6 +89,15 @@ export class GuardedHttpClient {
     return this.#endpointPath;
   }
 
+  /**
+   * The host the endpoint was found on, which is frequently `mcp.<apex>` rather
+   * than the apex itself. Endpoint-relative candidates must be probed here:
+   * resolving them against the apex asks the wrong server.
+   */
+  get endpointHost(): string | undefined {
+    return this.#endpointHost;
+  }
+
   /** Robots for a host we have already contacted. Exposed so F2 can report it. */
   robotsFor(host: string): RobotsTxt | undefined {
     return this.#robots.get(host);
@@ -98,8 +108,9 @@ export class GuardedHttpClient {
    * that unlocks POST, and it widens the path allowlist to endpoint-relative
    * candidates.
    */
-  endpointDiscovered(endpointPath: string): void {
+  endpointDiscovered(endpointPath: string, endpointHost: string): void {
     this.#endpointPath = endpointPath;
+    this.#endpointHost = endpointHost;
     this.#discoveryEstablished = true;
   }
 

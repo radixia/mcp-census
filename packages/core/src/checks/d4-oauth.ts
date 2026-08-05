@@ -11,7 +11,6 @@
  * attempt: we never send a credential and never follow the challenge.
  */
 
-import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import { headerValue } from "../http/types.js";
 import { type CheckContext, type CheckDeps, parseJsonObject } from "./deps.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
@@ -28,11 +27,55 @@ export function parseResourceMetadata(header: string | undefined): string | unde
 
 interface OauthProbe {
   readonly candidateId: string;
+  readonly host: string;
   readonly path: string;
   readonly result: "found" | "not_found" | "skipped_by_robots" | "transport_error" | "malformed";
   readonly status?: number;
   readonly authorizationServers?: readonly string[];
   readonly resourceMetadataHint?: string;
+}
+
+const ROOT_PATH = "/.well-known/oauth-protected-resource";
+
+/**
+ * Where to look for Protected Resource Metadata.
+ *
+ * RFC 9728 locates the document on the **resource server** — for MCP that is
+ * the origin serving the MCP endpoint, commonly `mcp.<apex>` rather than the
+ * apex. Probing only the apex is a false negative on the one check the
+ * specification makes mandatory, so the endpoint's own origin is probed too,
+ * in both the path-inserted and root forms.
+ */
+export function oauthTargets(context: {
+  apex: string;
+  endpointHost?: string;
+  endpointPath?: string;
+}): ReadonlyArray<{ candidateId: string; host: string; path: string }> {
+  const targets = [
+    { candidateId: "oauth-protected-resource-root", host: context.apex, path: ROOT_PATH },
+  ];
+
+  const { endpointHost, endpointPath } = context;
+  if (endpointHost !== undefined && endpointPath !== undefined) {
+    const normalised = endpointPath.endsWith("/") ? endpointPath.slice(0, -1) : endpointPath;
+
+    if (normalised !== "") {
+      targets.push({
+        candidateId: "oauth-protected-resource-path-inserted",
+        host: endpointHost,
+        path: `${ROOT_PATH}${normalised}`,
+      });
+    }
+    if (endpointHost !== context.apex) {
+      targets.push({
+        candidateId: "oauth-protected-resource-endpoint-root",
+        host: endpointHost,
+        path: ROOT_PATH,
+      });
+    }
+  }
+
+  return targets;
 }
 
 export async function checkOauthProtectedResource(
@@ -43,17 +86,16 @@ export async function checkOauthProtectedResource(
   const probes: OauthProbe[] = [];
   let challengeHint: string | undefined;
 
-  for (const candidate of candidatesForCheck("D4")) {
-    const endpointPath = deps.client.endpointPath;
-    if (candidate.template.includes("{endpointPath}") && endpointPath === undefined) continue;
+  const targets = oauthTargets({
+    apex: context.apex,
+    ...(deps.client.endpointHost === undefined ? {} : { endpointHost: deps.client.endpointHost }),
+    ...(deps.client.endpointPath === undefined ? {} : { endpointPath: deps.client.endpointPath }),
+  });
 
-    const path = resolveCandidate(candidate, {
-      apex: context.apex,
-      ...(endpointPath === undefined ? {} : { endpointPath }),
-    });
-
-    const outcome = await deps.client.fetchPath(path);
-    const base = { candidateId: candidate.id, path } as const;
+  for (const target of targets) {
+    const { host, path } = target;
+    const outcome = await deps.client.fetchPath(path, "GET", host);
+    const base = { candidateId: target.candidateId, host, path } as const;
 
     if (outcome.outcome === "skipped_by_robots") {
       probes.push({ ...base, result: "skipped_by_robots" });

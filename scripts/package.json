@@ -1,0 +1,19 @@
+{
+  "name": "@mcp-census/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One-off analysis and pilot runners. Not part of the published pipeline.",
+  "scripts": {
+    "pilot": "node pilot/run.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mcp-census/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

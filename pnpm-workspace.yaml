@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/worker
+  - scripts
 
 # esbuild backs Vitest's transform; workerd is the Workers runtime wrangler runs
 # locally. Both are first-party binaries for tools we already depend on.

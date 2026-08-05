@@ -7,7 +7,7 @@ import { type FakeRoutes, fakeDeps, fakeHttp, TEST_IDENTITY } from "../testing/f
 import { checkServerCard } from "./d1-server-card.js";
 import { checkDnsDiscovery, parseMcpTxtRecord } from "./d2-dns.js";
 import { checkConventionalEndpoint } from "./d3-endpoint.js";
-import { checkOauthProtectedResource, parseResourceMetadata } from "./d4-oauth.js";
+import { checkOauthProtectedResource, oauthTargets, parseResourceMetadata } from "./d4-oauth.js";
 import { checkTextFallbacks } from "./f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./f2-crawler-posture.js";
 import type { CheckResult } from "./types.js";
@@ -84,9 +84,27 @@ describe("D1 — server card", () => {
     await checkServerCard(h.deps, { apex: APEX });
     expect(h.http.urls()).not.toContain("https://example.com/mcp/server-card");
 
-    h.client.endpointDiscovered("/mcp");
+    h.client.endpointDiscovered("/mcp", "example.com");
     await checkServerCard(h.deps, { apex: APEX });
     expect(h.http.urls()).toContain("https://example.com/mcp/server-card");
+  });
+
+  it("asks the endpoint's own host for the endpoint-relative card", async () => {
+    // Regression: resolving it against the apex asks a server that does not
+    // host the endpoint, and silently misses every card on an mcp.* subdomain.
+    const h = harness({
+      "https://mcp.example.com/mcp/server-card": {
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "example", version: "1.0.0" }),
+      },
+    });
+    h.client.endpointDiscovered("/mcp", "mcp.example.com");
+
+    const result = await checkServerCard(h.deps, { apex: APEX });
+
+    expect(result.status).toBe("pass");
+    expect(h.http.urls()).toContain("https://mcp.example.com/mcp/server-card");
+    expect(h.http.urls()).not.toContain("https://example.com/mcp/server-card");
   });
 });
 
@@ -178,6 +196,57 @@ describe("D4 — RFC 9728 protected resource", () => {
     expect((await checkOauthProtectedResource(h.deps, { apex: APEX })).status).toBe("fail");
   });
 
+  it("looks on the endpoint's own origin, which is the resource server", async () => {
+    // Regression: RFC 9728 locates the document on the resource server. For MCP
+    // that is usually mcp.<apex>, so probing only the apex is a false negative
+    // on the one check the specification makes mandatory.
+    const h = harness({
+      "https://mcp.example.com/.well-known/oauth-protected-resource": {
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ authorization_servers: ["https://auth.example.com"] }),
+      },
+    });
+    h.client.endpointDiscovered("/mcp", "mcp.example.com");
+
+    const result = await checkOauthProtectedResource(h.deps, { apex: APEX });
+
+    expect(result.status).toBe("pass");
+    expect(h.http.urls()).toContain(
+      "https://mcp.example.com/.well-known/oauth-protected-resource/mcp",
+    );
+  });
+
+  it("enumerates apex root, endpoint path-inserted and endpoint root", () => {
+    expect(
+      oauthTargets({ apex: "example.com", endpointHost: "mcp.example.com", endpointPath: "/mcp" }),
+    ).toEqual([
+      {
+        candidateId: "oauth-protected-resource-root",
+        host: "example.com",
+        path: "/.well-known/oauth-protected-resource",
+      },
+      {
+        candidateId: "oauth-protected-resource-path-inserted",
+        host: "mcp.example.com",
+        path: "/.well-known/oauth-protected-resource/mcp",
+      },
+      {
+        candidateId: "oauth-protected-resource-endpoint-root",
+        host: "mcp.example.com",
+        path: "/.well-known/oauth-protected-resource",
+      },
+    ]);
+  });
+
+  it("does not duplicate the root probe when the endpoint is on the apex", () => {
+    const targets = oauthTargets({
+      apex: "example.com",
+      endpointHost: "example.com",
+      endpointPath: "/mcp",
+    });
+    expect(targets).toHaveLength(2);
+  });
+
   it("reads a 401 challenge as a positive detection", async () => {
     // Reading a response header is not an authentication attempt: we send no
     // credential and never follow the challenge.
@@ -213,10 +282,37 @@ describe("D2 — DNS TXT", () => {
     expect(parseMcpTxtRecord("v=mcp1; src=https://mcp.example.com/mcp; auth=oauth2")).toMatchObject(
       {
         version: "mcp1",
-        src: "https://mcp.example.com/mcp",
+        dialect: "serra",
+        endpoint: "https://mcp.example.com/mcp",
         auth: "oauth2",
       },
     );
+  });
+
+  it("parses the draft-morrison format, which uses url= instead of src=", () => {
+    expect(
+      parseMcpTxtRecord("v=mcp1; url=https://mcp.example.com; proto=streamable-http; priority=1"),
+    ).toMatchObject({
+      dialect: "morrison",
+      endpoint: "https://mcp.example.com",
+      proto: "streamable-http",
+    });
+  });
+
+  it("records which of the two competing drafts an operator implemented", () => {
+    // They share the _mcp. label, so one lookup covers both and the key name
+    // tells us which proposal won on that domain.
+    expect(parseMcpTxtRecord("v=mcp1; src=https://a.test")?.dialect).toBe("serra");
+    expect(parseMcpTxtRecord("v=mcp1; url=https://a.test")?.dialect).toBe("morrison");
+    expect(parseMcpTxtRecord("v=mcp1; src=https://a.test; url=https://a.test")?.dialect).toBe(
+      "both",
+    );
+    expect(parseMcpTxtRecord("v=mcp1")?.dialect).toBe("unknown");
+  });
+
+  it("keeps a base64 value containing = intact", () => {
+    const record = parseMcpTxtRecord("v=mcp1; url=https://a.test; pk=ed25519:AbC123==");
+    expect(record?.endpoint).toBe("https://a.test");
   });
 
   it("parses the registry variant", () => {

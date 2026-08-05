@@ -121,7 +121,7 @@ export async function checkConventionalEndpoint(
   if (discovered !== undefined) {
     // Unlocks the endpoint-relative candidates in D1 and D4. It does not by
     // itself unlock POST — only a confirmed handshake does that.
-    deps.client.endpointDiscovered(discovered.path);
+    deps.client.endpointDiscovered(discovered.path, discovered.host);
     return pass("D3", evidence, latencyMs);
   }
 

@@ -1,7 +1,16 @@
 export { checkServerCard } from "./checks/d1-server-card.js";
-export { checkDnsDiscovery, type McpTxtRecord, parseMcpTxtRecord } from "./checks/d2-dns.js";
+export {
+  checkDnsDiscovery,
+  type McpTxtRecord,
+  parseMcpTxtRecord,
+  type TxtRecordDialect,
+} from "./checks/d2-dns.js";
 export { checkConventionalEndpoint, endpointTargets } from "./checks/d3-endpoint.js";
-export { checkOauthProtectedResource, parseResourceMetadata } from "./checks/d4-oauth.js";
+export {
+  checkOauthProtectedResource,
+  oauthTargets,
+  parseResourceMetadata,
+} from "./checks/d4-oauth.js";
 export type { CheckContext, CheckDeps, DnsCheckDeps } from "./checks/deps.js";
 export { checkTextFallbacks } from "./checks/f1-text-fallbacks.js";
 export { type AgentPostureRow, checkCrawlerPosture } from "./checks/f2-crawler-posture.js";

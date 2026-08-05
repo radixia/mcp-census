@@ -96,7 +96,7 @@ describe("guards", () => {
 
   it("refuses tools/call even after discovery", async () => {
     const c = client({ "https://example.com/robots.txt": { body: "" } });
-    c.client.endpointDiscovered("/mcp");
+    c.client.endpointDiscovered("/mcp", "example.com");
     await expect(
       c.client.postJsonRpc({ url: "https://example.com/mcp", method: "tools/call" }),
     ).rejects.toThrow(ProbeGuardError);
@@ -107,7 +107,7 @@ describe("guards", () => {
       "https://example.com/robots.txt": { body: "" },
       "https://example.com/mcp": { status: 200, body: "{}" },
     });
-    c.client.endpointDiscovered("/mcp");
+    c.client.endpointDiscovered("/mcp", "example.com");
 
     await c.client.postJsonRpc({ url: "https://example.com/mcp", method: "server/discover" });
 

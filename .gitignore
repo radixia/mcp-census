@@ -21,3 +21,7 @@ NOTES.local.md
 
 .DS_Store
 *.log
+
+# Pilot inputs and outputs. The Tranco list is not redistributed; the sample is
+# reproducible from scripts/pilot/sample.ts plus the list id recorded in its header.
+scripts/out/

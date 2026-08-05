@@ -290,13 +290,34 @@ registration of both the `mcp` URI scheme and the `mcp-server` suffix.
 
 [datatracker](https://datatracker.ietf.org/doc/draft-morrison-mcp-dns-discovery/01/)
 · "Discovery of Model Context Protocol Servers via DNS TXT Records".
-**Found via search; not yet fetched in full — the exact record format is
-unverified.** Resolve before implementing D2 and record the format here. Do not
-guess it.
+Individual Internet-Draft, Informational, published April 2026, expiring
+October 2026. Verified against the source on **2026-08-05**.
 
-Both drafts expiring or unadopted means D2's expected hit rate is near zero.
-Keep the check — a zero on a named mechanism is a reportable result — but do not
-build headline statistics on it.
+Same underscore label, `_mcp.{domain}`, and the same `v=mcp1` version tag as
+draft-serra. Exact syntax:
+
+```
+"v=mcp1; url=https://mcp.example.com; proto=streamable-http; pk=ed25519:<base64url>;
+ epoch=<digit>; cap=<tokens>; attest=<tokens>; scope=<tokens>; priority=<digit>;
+ ttl=<digits>; ext=https://..."
+```
+
+Required: `v` and `url`. Everything else optional. The draft declares itself
+work-in-progress and unsuitable for citation.
+
+**The two drafts collide on the label and diverge on the key.** Both claim
+`_mcp.{domain}` with `v=mcp1`; serra names the endpoint `src=`, morrison names
+it `url=`. One DNS lookup therefore covers both, and *which key a record uses
+identifies which draft the operator implemented*. D2 records that as
+`dialect: serra | morrison | both | unknown` — a free finding, and a concrete
+illustration of the fragmentation the census exists to measure.
+
+Note also that morrison's optional `pk=ed25519:<base64url>` can contain `=`
+padding, so a record parser must split on the *first* `=` per field only.
+
+Both drafts being unadopted and near expiry means D2's expected hit rate is
+near zero. Keep the check — a zero on a named mechanism is a reportable result —
+but do not build headline statistics on it.
 
 ---
 
@@ -463,7 +484,7 @@ we freeze, and re-freezing later invalidates reproducibility.
 
 ## 11. Open items for the next session
 
-- [ ] Fetch `draft-morrison-mcp-dns-discovery-01` in full; record exact TXT format (§6)
+- [x] ~~Fetch `draft-morrison-mcp-dns-discovery-01`; record exact TXT format~~ — done 2026-08-05, §6
 - [ ] Resolve the D3 HEAD-vs-POST decision with Marco (§7)
 - [ ] Confirm Smithery API key availability and rate limits (§8)
 - [ ] Investigate Glama and PulseMCP APIs; check PulseMCP redundancy (§8)
