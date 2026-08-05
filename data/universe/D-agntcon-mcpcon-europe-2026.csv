@@ -1,0 +1,53 @@
+apex,organization,role,tier,resolution
+amazon.com,AWS,sponsor,diamond,inferred
+google.com,Google Cloud,sponsor,diamond,inferred
+obot.ai,Obot.ai,sponsor,diamond,confirmed
+solo.io,Solo.io,sponsor,diamond,confirmed
+safe.com,FME by Safe Software,sponsor,platinum,confirmed
+runlayer.com,Runlayer,sponsor,platinum,confirmed
+vultr.com,Vultr,sponsor,platinum,confirmed
+akuity.io,Akuity,sponsor,gold,confirmed
+auth0.com,Auth0,sponsor,gold,confirmed
+clickhouse.com,ClickHouse,sponsor,gold,confirmed
+descope.com,Descope,sponsor,gold,confirmed
+elastic.co,Elastic,sponsor,gold,confirmed
+gravitee.io,Gravitee,sponsor,gold,confirmed
+neo4j.com,Neo4j,sponsor,gold,confirmed
+omnys.com,OMNYS,sponsor,gold,inferred
+oracle.com,Oracle AI Database,sponsor,gold,confirmed
+orkes.io,Orkes,sponsor,gold,confirmed
+runpod.io,Runpod,sponsor,gold,confirmed
+temporal.io,Temporal,sponsor,gold,confirmed
+tigera.io,Tigera,sponsor,gold,confirmed
+traefik.io,Traefik Labs,sponsor,gold,confirmed
+agentcat.ai,AgentCat,sponsor,startup,confirmed
+alpic.ai,Alpic,sponsor,startup,confirmed
+apify.com,Apify,sponsor,startup,confirmed
+arcade.dev,Arcade,sponsor,startup,confirmed
+authplane.com,AuthPlane,sponsor,startup,inferred
+bluerock.io,BlueRock,sponsor,startup,confirmed
+kilocode.ai,Kilo Code,sponsor,startup,confirmed
+mcp-use.com,mcp-use,sponsor,startup,confirmed
+reboot.dev,Reboot,sponsor,startup,confirmed
+stacklok.com,Stacklok,sponsor,startup,confirmed
+anthropic.com,Anthropic,speaker-org,,confirmed
+aaif.io,The Agentic AI Foundation,speaker-org,,inferred
+deepmind.google,Google DeepMind,speaker-org,,inferred
+microsoft.com,Microsoft,speaker-org,,confirmed
+humanlayer.dev,HumanLayer,speaker-org,,inferred
+huggingface.co,Hugging Face,speaker-org,,confirmed
+gitlab.com,GitLab,speaker-org,,confirmed
+scania.com,Scania,speaker-org,,confirmed
+uber.com,Uber,speaker-org,,confirmed
+atlassian.com,Atlassian,speaker-org,,confirmed
+openai.com,OpenAI,speaker-org,,confirmed
+mirantis.com,Mirantis,speaker-org,,confirmed
+meta.com,Meta Platforms,speaker-org,,confirmed
+cisco.com,Cisco,speaker-org,,confirmed
+github.com,GitHub,speaker-org,,confirmed
+databricks.com,Databricks,speaker-org,,confirmed
+bloomberg.com,Bloomberg,speaker-org,,confirmed
+datadoghq.com,Datadog,speaker-org,,confirmed
+snyk.io,Snyk,speaker-org,,confirmed
+salesforce.com,Salesforce,speaker-org,,confirmed
+redhat.com,Red Hat,speaker-org,,confirmed
