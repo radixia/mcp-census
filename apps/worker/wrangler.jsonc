@@ -39,9 +39,7 @@
 
   // Evidence blobs, the registry snapshot and Parquet releases. Keyed
   // apex-first so honouring an opt-out is a prefix delete — see ADR 0005.
-  "r2_buckets": [
-    { "binding": "ARTIFACTS", "bucket_name": "mcp-census-artifacts", "remote": true }
-  ],
+  "r2_buckets": [{ "binding": "ARTIFACTS", "bucket_name": "mcp-census-artifacts", "remote": true }],
 
   // On-demand /census/check results and rate limiting.
   "kv_namespaces": [{ "binding": "SCAN_CACHE", "id": "f85aa623561f4f65a2b743872f6803e0" }],
