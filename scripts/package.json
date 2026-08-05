@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mcp-census/core": "workspace:*"
+    "@mcp-census/core": "workspace:*",
+    "tldts": "^7.4.10"
   },
   "devDependencies": {
     "@types/node": "catalog:",
