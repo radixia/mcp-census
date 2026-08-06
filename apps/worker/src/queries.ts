@@ -17,6 +17,43 @@ export interface LatestRun {
   readonly domains_completed: number;
 }
 
+/**
+ * The newest complete run over the WHOLE population.
+ *
+ * The headline and the results table must never come from a watchlist run. The
+ * watchlist is, by construction, "every domain that has ever shown a discovery
+ * signal", so essentially all of it has one — and reporting that under the
+ * headline's framing, "of the organisations that provably run an MCP server",
+ * describes a population the run did not measure.
+ *
+ * This is not hypothetical. The first nightly watchlist run flipped the live
+ * headline from "61% publish nothing, 4,495 of 7,421" to "2%, 64 of 2,928"
+ * overnight, with the framing text unchanged. Nothing improved; the page had
+ * silently switched populations. A census whose entire value is methodological
+ * care cannot publish a biased subset under the full population's sentence.
+ *
+ * Two spellings of "full" exist in the data and both must match. crawl.ts passes
+ * NULL for the full universe, while run 3 — the first census, seeded by
+ * scripts/pilot/import.ts — carries the string 'full'. Filtering on NULL alone
+ * excluded the only full run there was and put "0 of 0" on the live homepage,
+ * which is how this comment came to be written.
+ */
+export async function latestFullRun(env: Env): Promise<LatestRun | null> {
+  return env.DB.prepare(
+    `SELECT id, finished_at, methodology_version, candidates_version, domains_completed
+       FROM runs
+      WHERE status = 'complete' AND (universe_filter IS NULL OR universe_filter = 'full')
+      ORDER BY id DESC
+      LIMIT 1`,
+  ).first<LatestRun>();
+}
+
+/**
+ * The newest complete run of ANY population.
+ *
+ * For "when did we last do anything", not for statistics. If you are about to
+ * compute a percentage with this, you want `latestFullRun` instead.
+ */
 export async function latestRun(env: Env): Promise<LatestRun | null> {
   return env.DB.prepare(
     `SELECT id, finished_at, methodology_version, candidates_version, domains_completed

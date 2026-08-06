@@ -22,7 +22,7 @@ import {
   candidateDistribution,
   domainDetail,
   headline,
-  latestRun,
+  latestFullRun,
   leaderboard,
   leaderboardCount,
   letterCounts,
@@ -151,7 +151,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
   }
 
   if (path === "/") {
-    const run = await latestRun(env);
+    const run = await latestFullRun(env);
     if (run === null) {
       return cacheable(
         landingPage({
@@ -217,7 +217,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
       ...(letter === undefined ? {} : { letter }),
     };
 
-    const run = await latestRun(env);
+    const run = await latestFullRun(env);
     if (run === null) {
       return cacheable(
         resultsPage({ chrome, rows: [], total: 0, offset: 0, bandCounts: [], letterCounts: {} }),
