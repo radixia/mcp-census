@@ -30,7 +30,13 @@ import { withSecurityHeaders } from "./security.js";
 export async function handle(request: Request, env?: Env): Promise<Response> {
   const url = new URL(request.url);
 
-  if (!url.pathname.startsWith(CENSUS_BASE_PATH)) {
+  // Exactly `/census`, or something beneath `/census/`. `startsWith` alone also
+  // accepted `/censusfoo` and `/census-data`, which the comment here used to claim
+  // could never arrive — true of the route patterns, but the guard should not
+  // depend on a promise made somewhere else.
+  const inCensus =
+    url.pathname === CENSUS_BASE_PATH || url.pathname.startsWith(`${CENSUS_BASE_PATH}/`);
+  if (!inCensus) {
     // Route matching should never send us anything else; if it does, say so
     // rather than silently serving census content on someone else's path.
     return withSecurityHeaders(new Response("not found", { status: 404 }));

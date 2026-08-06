@@ -199,6 +199,16 @@ function toCsv(rows: readonly Row[]): string {
   return [header.join(","), ...lines].join("\n");
 }
 
+/**
+ * Every check the summary reports, in the order the methodology lists them.
+ *
+ * Was written out twice as a literal covering D1-D4, F1, F2, and stayed that way
+ * when D5, D6 and Q1 were added — so the local summary silently omitted the
+ * handshake, the tool listing and the tool-surface check, the three that carry
+ * the headline. One list, used in both places, cannot drift like that again.
+ */
+const SUMMARY_CHECKS = ["D1", "D2", "D3", "D4", "D5", "D6", "Q1", "F1", "F2"] as const;
+
 function summarise(rows: readonly Row[]): string {
   const total = rows.length;
   const counts = new Map<string, number>();
@@ -213,7 +223,7 @@ function summarise(rows: readonly Row[]): string {
   for (const row of rows) {
     if (row.guardViolation !== undefined) guardViolations++;
 
-    for (const id of ["D1", "D2", "D3", "D4", "F1", "F2"]) {
+    for (const id of SUMMARY_CHECKS) {
       const status = statusOf(row, id);
       if (status === "pass") bump(id);
     }
@@ -242,7 +252,7 @@ function summarise(rows: readonly Row[]): string {
     "Check pass rates:",
   ];
 
-  for (const id of ["D1", "D2", "D3", "D4", "F1", "F2"]) {
+  for (const id of SUMMARY_CHECKS) {
     const n = counts.get(id) ?? 0;
     lines.push(`  ${id}  ${String(n).padStart(4)}  ${pct(n)}`);
   }

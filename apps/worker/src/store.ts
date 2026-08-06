@@ -120,6 +120,41 @@ export async function persistScan(
   await env.DB.batch(statements);
 }
 
+/**
+ * Record a domain we could not probe, so the run can still close.
+ *
+ * The counter that decides when a run is finished lives inside `persistScan`, so
+ * any path that returns without writing a row leaves `domains_completed` short of
+ * `domains_planned` **for ever**: the run never closes, `usable_for_delta` stays
+ * 0, and every later run keeps comparing against an older baseline. The visible
+ * symptom is an empty changes feed, which is indistinguishable from a working
+ * system that found nothing.
+ *
+ * `unreachable` is the honest word here and the schema already allows it: we made
+ * our attempts and never got an answer. It is deliberately NOT used for a guard
+ * violation — that is our bug, not a fact about the domain, and the published
+ * dataset must not say otherwise. Those are handled by the run watchdog instead.
+ */
+export async function persistUnreachable(
+  env: Env,
+  runId: number,
+  apex: string,
+  startedAt: string,
+): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO scans
+         (run_id, apex, started_at, finished_at, request_count, duration_ms,
+          evidence_key, assessed, score, band, unassessed_reason)
+       VALUES (?, ?, ?, ?, 0, NULL, NULL, 0, NULL, NULL, 'unreachable')
+       ON CONFLICT (run_id, apex) DO NOTHING`,
+    ).bind(runId, apex, startedAt, new Date().toISOString()),
+    env.DB.prepare(`UPDATE runs SET domains_completed = domains_completed + 1 WHERE id = ?`).bind(
+      runId,
+    ),
+  ]);
+}
+
 export async function openRun(
   env: Env,
   params: {

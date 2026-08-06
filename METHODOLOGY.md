@@ -296,6 +296,17 @@ The things that weaken our own findings. This section is not a formality.
     incomplete and is flagged as such: a snapshot on the 5th puts five days beside
     thirty, which renders as a collapse if left unmarked.
 
+19. **The headline is computed from a full-population run only, never a nightly
+    one.** The watchlist that runs on the six non-Sunday nights is, by
+    construction, every domain that has ever shown a discovery signal, so almost
+    all of it has one. On 2026-08-06 the first nightly run flipped the live
+    headline from "61% publish nothing, 4,495 of 7,421" to "2%, 64 of 2,928"
+    while the sentence around it stayed the same: nothing had improved, the page
+    had silently changed population. The query now refuses any run that is not
+    over the whole universe. Recorded because the failure was invisible in the
+    direction that mattered — a number that gets worse is questioned, one that
+    gets better is celebrated.
+
 ## Open questions
 
 These are unresolved as of 2026-08-05 and are recorded here rather than hidden:

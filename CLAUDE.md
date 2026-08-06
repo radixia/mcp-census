@@ -184,7 +184,7 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 | 1 | Core probes D1–D6, Q1, F1, F2 + pilot | **done** 2026-08-05 |
 | 2 | CLI `npx mcpcensus check` | **done**; not yet published to npm |
 | 3 | Cloudflare infra — D1, R2, KV, Queues, cron | **done** 2026-08-05 |
-| 4 | Full census over Universe R + D | **done** 2026-08-05 — 7,421 assessed, in D1 as run 3 |
+| 4 | Full census over Universe R + D | **done** 2026-08-05 — 7,421 assessed, in D1 as run 3. Nightly cron live since 2026-08-06 |
 | 5 | Shadow MCP classification | **partial** — see below |
 | 6 | Public site, live at www.radixia.ai/census/ | **done** 2026-08-05 |
 | 7 | Data release, Parquet, Zenodo | **release cut** 2026-08-05, downloadable at `/census/data`; Zenodo deposition still needs an account |
@@ -224,3 +224,11 @@ approval, and commit with a real message.
 - npm package and binary: `mcpcensus`, unscoped, invoked `npx mcpcensus check`.
   The brief's `<<<NPM_SCOPE>>>` placeholder is superseded by this.
 - Homebrew's Node ships without corepack; pnpm was installed via `npm i -g pnpm`.
+- **Two spellings of a full run exist in `runs.universe_filter`:** `crawl.ts`
+  writes `NULL`, and run 3 — seeded by `scripts/pilot/import.ts` — carries the
+  string `'full'`. Any query that means "the whole population" must accept both.
+  `latestFullRun()` does; matching only one of them put "0 of 0" on the live
+  homepage.
+- **The headline may only ever come from a full run.** The nightly watchlist is a
+  biased subset by construction and reporting it under the census framing is the
+  most damaging bug this project can ship. See `latestFullRun()` and its test.

@@ -23,7 +23,7 @@ import {
 import { dohResolveTxt, sleep, workerFetch } from "./adapters.js";
 import { computeAggregates, computeDeltas } from "./deltas.js";
 import type { CrawlMessage, Env } from "./env.js";
-import { closeRun, loadOptOuts, openRun, persistScan } from "./store.js";
+import { closeRun, loadOptOuts, openRun, persistScan, persistUnreachable } from "./store.js";
 
 /**
  * Upper bounds on a night's work.
@@ -35,6 +35,20 @@ import { closeRun, loadOptOuts, openRun, persistScan } from "./store.js";
  * measured them and found nothing.
  */
 const MAX_FULL = 12_000;
+/**
+ * Initial delivery plus `max_retries` from wrangler.jsonc. Kept in step with that
+ * file by hand, because the consumer cannot read its own queue configuration.
+ */
+const MAX_ATTEMPTS = 3;
+/**
+ * How long a run may stay open before the watchdog closes it.
+ *
+ * The full census takes about 95 minutes and the watchlist about 33, so six hours
+ * is far outside normal and only trips on something genuinely stuck — a guard
+ * violation, which acks without writing a row, or a message lost some other way.
+ * Without this a single such domain freezes the delta pipeline permanently.
+ */
+const RUN_WATCHDOG_MS = 6 * 60 * 60 * 1000;
 const MAX_WATCHLIST = 6_000;
 
 /**
@@ -80,7 +94,41 @@ async function selectDomains(
   return { domains: results.map((r) => r.apex), available: total?.n ?? results.length };
 }
 
+/**
+ * Close runs that will never finish, before opening tonight's.
+ *
+ * This has to live in the cron rather than only in the queue consumer. The
+ * consumer's own check runs when a message for that run arrives — and the stuck
+ * case is precisely the one where no message ever arrives again, because the
+ * last one was acked without writing a row or was lost. A watchdog that only
+ * fires while work is flowing cannot catch a run that has stopped.
+ *
+ * closeRun derives usable_for_delta from completed >= planned, so a swept run is
+ * correctly marked unusable as a baseline instead of pretending to be complete.
+ */
+async function sweepStalledRuns(env: Env): Promise<void> {
+  const cutoff = new Date(Date.now() - RUN_WATCHDOG_MS).toISOString();
+  const { results } = await env.DB.prepare(
+    `SELECT id, domains_planned AS planned, domains_completed AS done
+       FROM runs
+      WHERE status = 'running' AND started_at < ?`,
+  )
+    .bind(cutoff)
+    .all<{ id: number; planned: number; done: number }>();
+
+  for (const run of results) {
+    console.warn(
+      `[census] run ${run.id} closed by watchdog: ${run.done}/${run.planned} domains. ` +
+        `Not usable as a delta baseline.`,
+    );
+    await closeRun(env, run.id);
+  }
+}
+
 export async function scheduled(event: ScheduledController, env: Env): Promise<void> {
+  // Before anything else, so a stuck run cannot block deltas indefinitely.
+  await sweepStalledRuns(env);
+
   // Sunday is the full universe; every other day is the watchlist.
   const full = new Date(event.scheduledTime).getUTCDay() === 0;
   const { domains, available } = await selectDomains(env, full, full ? MAX_FULL : MAX_WATCHLIST);
@@ -143,8 +191,18 @@ export async function consume(batch: MessageBatch<CrawlMessage>, env: Env): Prom
           message.ack();
           return;
         }
-        // Anything else may be transient — let the queue retry it.
-        console.error(`probe failed ${apex}: ${String(error)}`);
+        // Anything else may be transient, so retry — but only while retries are
+        // left. Letting the last attempt fall off the queue writes no row, and
+        // the run's completion counter then never reaches its plan: it stays
+        // open for ever, never becomes a delta baseline, and the changes feed
+        // silently dies. Record the domain as unreachable instead, which is both
+        // true and enough for the run to close.
+        console.error(`probe failed ${apex} (attempt ${message.attempts}): ${String(error)}`);
+        if (message.attempts >= MAX_ATTEMPTS) {
+          await persistUnreachable(env, runId, apex, startedAt);
+          message.ack();
+          return;
+        }
         message.retry();
       }
     }),
@@ -155,13 +213,31 @@ export async function consume(batch: MessageBatch<CrawlMessage>, env: Env): Prom
   const runIds = [...new Set(batch.messages.map((m) => m.body.runId))];
   for (const runId of runIds) {
     const row = await env.DB.prepare(
-      `SELECT domains_planned AS planned, domains_completed AS done, status
+      `SELECT domains_planned AS planned, domains_completed AS done, status, started_at
          FROM runs WHERE id = ?`,
     )
       .bind(runId)
-      .first<{ planned: number; done: number; status: string }>();
+      .first<{ planned: number; done: number; status: string; started_at: string }>();
 
-    if (row !== null && row.status === "running" && row.done >= row.planned) {
+    if (row === null || row.status !== "running") continue;
+
+    // A run whose plan will never be met has to be closed anyway, or it blocks
+    // every future delta. closeRun already sets usable_for_delta from
+    // completed >= planned, so a watchdog close is correctly marked unusable as a
+    // baseline rather than quietly pretending to be complete.
+    const startedMs = Date.parse(row.started_at);
+    const stalled =
+      Number.isFinite(startedMs) &&
+      Date.now() - startedMs > RUN_WATCHDOG_MS &&
+      row.done < row.planned;
+    if (stalled) {
+      console.warn(
+        `[census] run ${runId} closed by watchdog: ${row.done}/${row.planned} after ` +
+          `${Math.round((Date.now() - startedMs) / 60000)} minutes. Not usable as a delta baseline.`,
+      );
+    }
+
+    if (row.done >= row.planned || stalled) {
       await closeRun(env, runId);
       // Only meaningful once the run is closed and flagged usable for deltas.
       const deltas = await computeDeltas(env, runId);

@@ -87,6 +87,13 @@ describe("worker responses", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
+  it("rejects a path that merely starts with the prefix", async () => {
+    // /censusfoo is not ours. The route patterns keep it away in production, but
+    // the guard should not rely on that.
+    expect((await handle(new Request("https://www.radixia.ai/censusfoo"))).status).toBe(404);
+    expect((await handle(new Request("https://www.radixia.ai/census-data"))).status).toBe(404);
+  });
+
   it("does not redirect a path that merely starts with the prefix", async () => {
     // Exact equality, not startsWith: /censusfoo must never be bounced into our
     // namespace. It cannot reach the Worker in production either — the route
