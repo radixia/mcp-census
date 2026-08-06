@@ -40,6 +40,11 @@
   // reached the Worker at all: it fell through to the static Pages build, which
   // answered with its own "404 — Radixia" page. `handle()` redirects it to
   // `/census/` rather than serving the landing page at two addresses.
+  //
+  // Trap when testing: a pattern without a wildcard matches the whole URL, query
+  // string included, so `/census?cb=1` does NOT reach the Worker and falls
+  // through to Pages. Verify the bare path. `/census/*` is unaffected — the
+  // wildcard covers the query too.
   "routes": [
     { "pattern": "www.radixia.ai/census", "zone_name": "radixia.ai" },
     { "pattern": "www.radixia.ai/census/*", "zone_name": "radixia.ai" }
