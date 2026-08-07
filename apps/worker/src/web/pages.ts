@@ -231,6 +231,25 @@ ${statGrid([
 
 <p><a class="btn" href="${esc(censusUrl("/check"))}">Check your own domain</a></p>
 
+<h2>Why this is hard</h2>
+<p>The organisations above are not being careless. There is no ratified way to do
+this. <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2127"
+rel="noopener">SEP-2127</a>, the proposal for server discovery over HTTP, has been open since
+21 January 2026 and is still labelled a draft. Its own target date of 3 April 2026 passed
+without it landing.</p>
+<p>The design also moved while people were adopting it. The card left the domain root for a path
+relative to the MCP endpoint, and even that is only a recommended location: cards may live at any
+unreserved URI. Discovery at the level of a domain was handed to a separate cross-ecosystem effort,
+the Linux Foundation <a href="https://ai-catalog.io/" rel="noopener">AI Catalog</a>, which needs a
+vote from both the A2A and MCP steering committees before it means anything. The experimental
+extension repository still says in as many words that it is
+<a href="https://github.com/modelcontextprotocol/experimental-ext-server-card" rel="noopener">not
+an accepted or official MCP extension</a>.</p>
+<p>Both leads of the working group that owns SEP-2127 reach the end of their terms on
+14 August 2026.</p>
+<p class="note">Checked against the pull request, the working group charter and the extension
+repository on 6 August 2026. Anyone can repeat those four clicks.</p>
+
 <h2>The most-used path is in no specification</h2>
 ${pathsParagraph(data.candidates)}
 ${

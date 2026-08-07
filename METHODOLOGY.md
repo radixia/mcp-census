@@ -114,6 +114,34 @@ Each check is a pure function returning `{ id, status: 'pass'|'fail'|'skip'|'err
 Check IDs are stable and appear as columns in the published dataset; they survive
 methodology revisions.
 
+### Where these identifiers come from
+
+`D1`, `F1`, `Q1` are **ours**. No specification assigns them and nobody outside this
+project uses them. They exist because the identifiers ship as columns in the
+published dataset and must survive revisions of this document, so they are
+deliberately dull and deliberately stable.
+
+Authority, where there is any, belongs to the thing measured and never to the
+label — see the "Normative basis" column, which ranges from a MUST in RFC 9728 to
+nothing at all. Citing "a `D4` failure" as though it were a standard designation
+would be citing us.
+
+- **`D`, discovery.** `D1` to `D6`, in dependency order: find a document, find an
+  endpoint, connect, list what is there. Each depends on the one before, which is
+  why a later check so often reports `skip`.
+- **`Q`, quality** of the tool surface once an agent is connected. One check today.
+- **`F`, fallbacks and posture.** The two things that help an agent which never
+  speaks MCP: text it can read, and whether a crawler is welcome.
+
+The letters were never expanded in the brief that introduced the scheme; the
+groupings above are what the checks and the scoring already do, written down here
+on 2026-08-06 rather than left to be inferred.
+
+`S1` was specified in the original brief for shadow servers and is absent from
+this list, because it turned out not to be a check: it measures the registry
+against a domain rather than measuring the domain, so it lives in a separate
+pipeline. The gap in the sequence is deliberate.
+
 | ID | Name | Method | Normative basis |
 |---|---|---|---|
 | `D1` | MCP server card | `GET` each candidate path; record which responded and whether it parses | none — all candidates are drafts or historical |

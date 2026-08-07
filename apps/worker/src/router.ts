@@ -419,6 +419,27 @@ against while not publishing it ourselves.</p>
 name, discover and connect to an MCP server for that brand? It is a census, not a site audit, and
 emphatically <strong>not</strong> a security assessment.</p>
 
+<h2>Where the check identifiers come from</h2>
+<p><code>D1</code>, <code>F1</code>, <code>Q1</code> are ours. No specification assigns them and
+nobody outside this project uses them. They exist because the identifiers ship as columns in the
+published dataset and have to survive revisions of this document, so they are deliberately dull
+and deliberately stable.</p>
+<p>The authority, where there is any, belongs to the thing measured and never to the label. The
+table below gives it per check, and it ranges from a MUST in RFC 9728 to nothing at all. Citing
+"a D4 failure" as though it were a standard designation would be citing us.</p>
+<ul>
+<li><strong>D, discovery.</strong> <code>D1</code> to <code>D6</code>, in dependency order: find a
+document, find an endpoint, connect, list what is there. Each depends on the one before it, which
+is why a later check so often reports a skip.</li>
+<li><strong>Q, quality</strong> of the tool surface once an agent is connected. One check today.</li>
+<li><strong>F, fallbacks and posture.</strong> The two things that help an agent that never speaks
+MCP at all: text an agent can read, and whether a crawler is welcome.</li>
+</ul>
+<p class="note">The original brief also specified an <code>S1</code> for shadow servers. It is not
+in this list because it turned out not to be a check: it measures the registry against a domain
+rather than measuring the domain, so it lives in a separate pipeline. The gap in the sequence is
+deliberate and recorded here so nobody looks for a missing column.</p>
+
 <h2>Scoring, in one sentence</h2>
 <p>A domain earns 70 of 100 points for being connectable at all, and the remaining 30 for the
 quality of what an agent finds once connected. Discovery is weighted far above everything else
