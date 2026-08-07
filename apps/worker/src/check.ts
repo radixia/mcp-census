@@ -48,8 +48,16 @@ const CACHE_TTL_SECONDS = 3600;
  */
 const FAILURE_CACHE_TTL_SECONDS = 300;
 
-/** How long one probe may hold the door against a simultaneous second. */
-const LOCK_TTL_SECONDS = 30;
+/**
+ * How long one probe may hold the door against a simultaneous second.
+ *
+ * 60 is the floor, not a preference: KV rejects any `expirationTtl` below it,
+ * and a 30 shipped here threw on every uncached check — the endpoint returned
+ * 1101 until this was raised. Comfortably longer than the ten-second budget a
+ * quick probe is allowed, so the door is never held by a probe that has already
+ * finished for long enough to matter.
+ */
+const LOCK_TTL_SECONDS = 60;
 
 /** Nothing was measured, and that is a fact about us rather than the domain. */
 function unassessed(apex: string, reason: string, note: string): CheckOutcome {
