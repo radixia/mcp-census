@@ -13,6 +13,7 @@ import {
   METHODOLOGY_VERSION,
   type Normativity,
 } from "@mcp-census/core";
+import { discoveryGraph } from "./graph.js";
 
 import {
   areaChart,
@@ -132,14 +133,17 @@ function pathsParagraph(rows: ReadonlyArray<{ candidate_id: string; n: number }>
  * and every row links to it.
  */
 const CHECK_NAMES: Record<string, string> = {
-  C1: "Card against runtime",
-  D7: "Catalog advertised by the root document",
   D1: "Server card",
   D2: "DNS record",
   D3: "Conventional endpoint",
   D4: "Authorization metadata",
   D5: "Handshake",
   D6: "Tool listing",
+  D7: "Catalog advertised by the root document",
+  // After the discovery chain: it compares two of its results rather than
+  // extending it. Key order is the table's sort order, so an entry in the wrong
+  // place here silently reorders a public page.
+  C1: "Card against runtime",
   Q1: "Tool surface",
   F1: "Text fallbacks",
   F2: "Crawler posture",
@@ -392,6 +396,7 @@ export function checkPage(options: {
       : `<p>We could not assess this domain: <code>${esc(r.unassessedReason ?? "unknown")}</code>.
          That is a fact about our crawl, not a finding about the site.</p>`
   }
+  ${discoveryGraph(r.checks, "on_demand")}
   ${checkTable(r.checks)}
   ${
     r.known
@@ -417,14 +422,15 @@ ${
      whole job is to be useful before it is anything else. */ ""
 }
 <p class="eyebrow">Check any domain</p>
-<h1>Are you in the census?</h1>
-<p class="lede">Enter a domain. No sign-up, nothing stored against you, and the same probe that
-produced every published number.</p>
+<h1>Can an agent find you?</h1>
+<p class="lede">Enter a domain and watch an agent try. You get the same probe that produced every
+published number, and the evidence behind each step. No sign-up, nothing stored against you.</p>
 ${form}
 ${result}
-<p class="note">We check what you published on purpose, at the locations a specification or a public
+<p class="note">We read what you published on purpose, at the locations a specification or a public
 proposal told you to publish it. We never call a tool, never authenticate, and never test for
-weaknesses. <a href="${esc(censusUrl("/crawler"))}">Exactly what we do</a>.</p>
+weaknesses. <a href="${esc(censusUrl("/crawler"))}">Exactly what we do</a> ·
+<a href="${esc(censusUrl("/methodology"))}">how every step is defined</a>.</p>
 
 ${
   // Only after a real measurement. On the empty form there is nothing to
@@ -593,6 +599,7 @@ export function domainPage(data: {
   }</p>
 </div>
 
+${discoveryGraph(data.checks)}
 ${checkTable(data.checks)}
 
 ${

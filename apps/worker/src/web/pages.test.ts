@@ -1,6 +1,7 @@
 import { censusUrl, NEUTRAL_THEME, RADIXIA_THEME, THEMES } from "@mcp-census/core";
 import { describe, expect, it } from "vitest";
 import { fixesFor, normaliseDomain } from "../check.js";
+import { discoveryGraph, stateOf } from "./graph.js";
 
 import { areaChart, barChart, ctaCard, esc, page } from "./layout.js";
 import { badgeSvg, checkPage, domainPage, landingPage, resultsPage } from "./pages.js";
@@ -771,5 +772,73 @@ describe("what a public page must never say", () => {
     } as never);
     const order = [...html.matchAll(/class="mono">([DFQ]\d)</g)].map((m) => m[1]);
     expect(order).toEqual(["D1", "D5", "F2"]);
+  });
+});
+
+describe("discovery graph", () => {
+  const rows = (...r: Array<[string, string, string | null]>) =>
+    r.map(([check_id, status, detail]) => ({ check_id, status, detail }));
+
+  it("says a refusal is inconclusive rather than an absence", () => {
+    expect(stateOf({ check_id: "D1", status: "fail", detail: "inconclusive_blocked" })).toBe(
+      "blocked",
+    );
+    expect(stateOf({ check_id: "D1", status: "fail", detail: "absent_at_every_candidate" })).toBe(
+      "absent",
+    );
+    expect(stateOf({ check_id: "D1", status: "skip", detail: null })).toBe("not_attempted");
+  });
+
+  it("does not claim we tried a check that the run predates", () => {
+    // cloudflare.com rendered "not reached" for D7 the day D7 shipped, because
+    // its stored result had no such row. That reads as "we tried and failed".
+    expect(stateOf(undefined)).toBe("not_in_run");
+    expect(discoveryGraph(rows(["D1", "pass", null]))).toContain("not in this run");
+  });
+
+  it("does not let a four-check answer look like a nine-check one", () => {
+    // The quick check runs F2, D1, D4 and F1. Rendering the other five as
+    // "not reached" claimed we tried; "not in this run" implied it was merely
+    // stale. Both overstated the evidence behind the answer.
+    // Both checks the quick profile actually runs, so anything still unlabelled
+    // is genuinely outside the profile rather than merely missing.
+    const html = discoveryGraph(rows(["D1", "pass", null], ["D4", "fail", null]), "on_demand");
+    expect(html).toContain("not run here");
+    expect(html).toContain("four of the nine");
+    expect(html).toContain("A DNS lookup is not available");
+    expect(html).not.toContain("not in this run");
+  });
+
+  it("marks an advertised catalog as seen and not followed", () => {
+    // The distinction a status column cannot carry, and the reason this exists.
+    expect(stateOf({ check_id: "D7", status: "pass", detail: null })).toBe("observed_not_followed");
+    expect(stateOf({ check_id: "D1", status: "pass", detail: null })).toBe("observed");
+  });
+
+  it("shows the routes it did not take instead of omitting them", () => {
+    const html = discoveryGraph(rows(["D1", "fail", "absent_at_every_candidate"]));
+    expect(html).toContain("Not measured here");
+    expect(html).toContain("outside_profile");
+    // Absence of a node would read as absence of the mechanism.
+    expect(html).toContain("Fetching an advertised catalog");
+  });
+
+  it("names every state in words, never in colour alone", () => {
+    const html = discoveryGraph(
+      rows(["D1", "pass", null], ["D7", "pass", null], ["D3", "fail", "inconclusive_blocked"]),
+    );
+    for (const word of ["observed", "observed, not followed", "inconclusive"]) {
+      expect(html).toContain(word);
+    }
+  });
+
+  it("leaves the cross-check out when there was nothing to compare", () => {
+    expect(discoveryGraph(rows(["D1", "fail", null]))).not.toContain("against each other");
+    expect(discoveryGraph(rows(["C1", "pass", null]))).toContain("against each other");
+  });
+
+  it("escapes everything it renders", () => {
+    const html = discoveryGraph(rows(["<script>", "fail", "<img onerror=1>"]));
+    expect(html).not.toContain("<script>");
   });
 });

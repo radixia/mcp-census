@@ -27,6 +27,7 @@ import {
   checkServerCard,
   checkTextFallbacks,
   GuardedHttpClient,
+  METHODOLOGY_VERSION,
   resolveCrawlerIdentity,
   scoreDomain,
 } from "@mcp-census/core";
@@ -203,7 +204,11 @@ export async function runCheck(env: Env, apex: string): Promise<CheckOutcome> {
   const known = await fromCensus(env, apex);
   if (known !== null) return known;
 
-  const cacheKey = `check:${apex}`;
+  // The version is in the key on purpose. Without it, a bump to the methodology
+  // leaves results measured under the old one being served as current for the
+  // whole TTL — the page would show a check set that no longer exists, and the
+  // graph would render the missing rows as "not reached".
+  const cacheKey = `check:${METHODOLOGY_VERSION}:${apex}`;
   const cached = await env.SCAN_CACHE.get(cacheKey, "json");
   if (cached !== null) return cached as CheckOutcome;
 

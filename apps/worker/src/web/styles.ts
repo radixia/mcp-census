@@ -87,6 +87,36 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .pill.skip{color:var(--ink-3)}
 .pill.band{background:var(--paper-2)}
 
+/* Discovery graph. Fixed topology, so the "graph" is a grid of stages: no
+   layout to compute, and the text stays selectable and in reading order.
+   State is carried by a word in every node, never by colour alone — the border
+   is reinforcement for people who can see it, not the message. */
+.graph{margin:26px 0;padding:0}
+.graph figcaption{color:var(--ink-2);font-size:.92rem;margin-bottom:18px;max-width:62ch}
+.gstage{font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:600;margin:18px 0 8px}
+.grow{list-style:none;padding:0;margin:0;display:grid;gap:10px;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.gnode{border:1px solid var(--line);border-left-width:3px;border-radius:var(--radius);
+  padding:12px 14px;background:var(--card)}
+.gnode p{margin:0 0 5px}
+.gnode p:last-child{margin-bottom:0}
+.gstate{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+  color:var(--ink-3)}
+.glabel{font-weight:600}
+.gmethod{font-size:.82rem;color:var(--ink-2);word-break:break-word}
+.gnode[data-state="observed"]{border-left-color:var(--ok)}
+.gnode[data-state="observed"] .gstate{color:var(--ok)}
+.gnode[data-state="observed_not_followed"]{border-left-color:var(--warn);
+  border-left-style:dashed}
+.gnode[data-state="observed_not_followed"] .gstate{color:var(--warn)}
+.gnode[data-state="absent"]{border-left-color:var(--bad)}
+.gnode[data-state="absent"] .gstate{color:var(--bad)}
+.gnode[data-state="blocked"]{border-left-style:dotted}
+.gnode[data-state="outside_profile"],
+.gnode[data-state="not_in_run"],
+.gnode[data-state="not_in_profile"]{background:none;border-style:dashed}
+
 form.check{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0}
 form.check input{flex:1 1 260px;min-width:0;font:inherit;padding:13px 14px;
   border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink)}
