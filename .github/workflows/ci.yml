@@ -49,6 +49,13 @@ jobs:
       - name: Lint and format
         run: pnpm lint
 
+      # Everything downstream imports @mcp-census/core by its package name, which
+      # resolves to dist/. Without this the whole repo fails to typecheck from a
+      # clean clone — which is what CI found on its very first run, because a
+      # working tree always has a dist/ lying around from something.
+      - name: Build core
+        run: pnpm --filter @mcp-census/core build
+
       # `pnpm test` runs typecheck first. Kept explicit so a failure names which
       # half broke rather than making someone read the log to find out.
       - name: Typecheck
