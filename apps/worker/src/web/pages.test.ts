@@ -718,3 +718,58 @@ describe("the check table a visitor actually reads", () => {
     expect(out).toContain("something_new_we_added");
   });
 });
+
+describe("what a public page must never say", () => {
+  it("carries no internal go-to-market vocabulary", () => {
+    // "The lead magnet" was rendered as the eyebrow above the check page's own
+    // heading, lifted from the GTM notes. It told visitors they were being farmed,
+    // on the page whose entire job is to be useful first. This project's standing
+    // rests on being a measurement rather than marketing.
+    const surfaces = [
+      checkPage({}),
+      landingPage({ headline: HEADLINE, candidates: [], runFinishedAt: null }),
+      resultsPage({ rows: [], total: 0, offset: 0, bandCounts: [], letterCounts: {} }),
+    ].join(" ");
+    for (const phrase of ["lead magnet", "funnel", "conversion", "top of funnel", "CTA"]) {
+      expect(surfaces.toLowerCase(), `a public page should not say "${phrase}"`).not.toContain(
+        phrase.toLowerCase(),
+      );
+    }
+  });
+
+  it("puts the source repository in the nav, not only the footer", () => {
+    // An open-source census that says "you can check our work" should not make you
+    // scroll to the bottom to find the work.
+    const html = page({
+      title: "x",
+      description: "d",
+      path: "/",
+      body: "",
+      chrome: { theme: RADIXIA_THEME, themeScript: false },
+    });
+    const nav = /<nav>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
+    expect(nav).toContain("github.com/radixia/mcp-census");
+    expect(nav).toContain("Source");
+  });
+
+  it("lists checks in methodology order, whatever order they arrive in", () => {
+    const html = domainPage({
+      apex: "e.com",
+      score: 10,
+      band: "Text-only",
+      assessed: true,
+      unassessedReason: null,
+      universe: "R",
+      methodologyVersion: "0.2.0",
+      finishedAt: null,
+      history: [],
+      checks: [
+        { check_id: "F2", status: "fail", detail: null },
+        { check_id: "D5", status: "fail", detail: null },
+        { check_id: "D1", status: "pass", detail: null },
+      ],
+    } as never);
+    const order = [...html.matchAll(/class="mono">([DFQ]\d)</g)].map((m) => m[1]);
+    expect(order).toEqual(["D1", "D5", "F2"]);
+  });
+});

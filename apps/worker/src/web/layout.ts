@@ -121,7 +121,13 @@ ${SEARCH_INDEXING_ENABLED ? "" : '<meta name="robots" content="noindex, nofollow
         `\n<a class="up" href="${esc(brand.operator.url)}">\u2190 ${esc(brand.operator.name)}</a>`
   }
 <a class="brand" href="${esc(censusUrl("/"))}">${esc(brand.productName)}</a>
-<nav>${NAV.map(([href, label]) => `<a href="${esc(censusUrl(href))}">${esc(label)}</a>`).join("")}</nav>
+<nav>${NAV.map(([href, label]) => `<a href="${esc(censusUrl(href))}">${esc(label)}</a>`).join("")}${
+    // The repository, in the nav rather than only in the footer. The whole claim
+    // of this project is that you can check its work, and a link you have to
+    // scroll to the bottom to find is not an invitation to do that. Comes from
+    // branding so a fork points at its own code.
+    `<a href="${esc(brand.repoUrl)}" rel="noopener">Source</a>`
+  }</nav>
 </div></header>
 <main><div class="wrap">
 ${options.body}

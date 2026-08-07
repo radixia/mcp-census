@@ -164,9 +164,20 @@ const DETAIL_WORDS: Record<string, string> = {
 function checkTable(
   rows: ReadonlyArray<{ check_id: string; status: string; detail: string | null }>,
 ): string {
+  // Methodology order, not whatever order the rows arrived in. Discovery runs D1
+  // to D6 and each depends on the one before, so a table listing F2 first and D5
+  // fourth hides the causal chain that explains every skip below it. Unknown ids
+  // sort to the end rather than to the front, which is what indexOf's -1 would do.
+  const order = Object.keys(CHECK_NAMES);
+  const rank = (id: string) => {
+    const i = order.indexOf(id);
+    return i === -1 ? order.length : i;
+  };
+  const sorted = [...rows].sort((a, b) => rank(a.check_id) - rank(b.check_id));
+
   return `<div class="scroll"><table>
 <thead><tr><th>Check</th><th>What it asks</th><th>Result</th><th>Detail</th></tr></thead>
-<tbody>${rows
+<tbody>${sorted
     .map((c) => {
       const detail =
         c.detail === null || c.detail === "" ? "" : (DETAIL_WORDS[c.detail] ?? c.detail);
@@ -331,7 +342,7 @@ export function checkPage(options: {
     result = `
 <div class="card">
   <p class="eyebrow">${esc(r.apex)}</p>
-  <h2>${esc(score)}${r.band === null ? "" : ` — <span class="pill band">${esc(r.band)}</span>`}</h2>
+  <h2>${esc(score)}${r.band === null ? "" : `, <span class="pill band">${esc(r.band)}</span>`}</h2>
   ${
     r.assessed
       ? ""
@@ -357,7 +368,12 @@ ${
   }
 
   const body = `
-<p class="eyebrow">The lead magnet</p>
+${
+  /* Was "The lead magnet", lifted straight from the GTM notes and rendered to
+     every visitor. It told people they were being farmed, on the one page whose
+     whole job is to be useful before it is anything else. */ ""
+}
+<p class="eyebrow">Check any domain</p>
 <h1>Are you in the census?</h1>
 <p class="lede">Enter a domain. No sign-up, nothing stored against you, and the same probe that
 produced every published number.</p>
@@ -529,7 +545,7 @@ export function domainPage(data: {
   <span class="big">${data.assessed === 1 ? esc(data.score) : "—"}</span>
   <p class="said">${
     data.assessed === 1
-      ? `out of 100 — <span class="pill band">${esc(data.band ?? "")}</span>`
+      ? `out of 100, <span class="pill band">${esc(data.band ?? "")}</span>`
       : `not assessable: <code>${esc(data.unassessedReason ?? "unknown")}</code>`
   }</p>
 </div>
