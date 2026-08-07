@@ -40,7 +40,7 @@ const CANDIDATE_LABELS: Record<string, string> = {
 const CANDIDATE_NOTES: Record<string, string> = {
   "mcp-json": "superseded",
   "mcp-server-card-json": "in no specification",
-  "ai-catalog": "current direction",
+  "ai-catalog": "current direction, optional path",
   "mcp-bare": "never adopted",
   "mcp-server-serra": "draft",
   "server-card-endpoint-relative": "draft",
@@ -114,7 +114,9 @@ function pathsParagraph(rows: ReadonlyArray<{ candidate_id: string; n: number }>
   ];
   if (forward !== undefined) {
     parts.push(
-      `The AI Catalog, where domain-level discovery is actually heading, is on ${esc(forward.n)}.`,
+      `The AI Catalog, where domain-level discovery is actually heading, answered at its
+       well-known path on ${esc(forward.n)}. That is a floor, not its adoption: its own
+       specification makes that path optional and lets a catalog live at any URL.`,
     );
   }
   return `<p>${parts.join(" ")}</p>`;
@@ -243,8 +245,10 @@ ${statGrid([
 <p>The organisations above are not being careless. There is no ratified way to do
 this. <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2127"
 rel="noopener">SEP-2127</a>, the proposal for server discovery over HTTP, has been open since
-21 January 2026 and is still labelled a draft. Its own target date of 3 April 2026 passed
-without it landing.</p>
+21 January 2026, is still labelled a draft, and missed its own target date of 3 April 2026. In
+July it was moved off the standards track altogether and
+<a href="https://github.com/modelcontextprotocol/experimental-ext-server-card/issues/15" rel="noopener">refactored onto the extensions track</a>, where
+Server Cards are being incubated rather than standardised.</p>
 <p>The design also moved while people were adopting it. The card left the domain root for a path
 relative to the MCP endpoint, and even that is only a recommended location: cards may live at any
 unreserved URI. Discovery at the level of a domain was handed to a separate cross-ecosystem effort,
@@ -253,10 +257,14 @@ vote from both the A2A and MCP steering committees before it means anything. The
 extension repository still says in as many words that it is
 <a href="https://github.com/modelcontextprotocol/experimental-ext-server-card" rel="noopener">not
 an accepted or official MCP extension</a>.</p>
-<p>Both leads of the working group that owns SEP-2127 reach the end of their terms on
-14 August 2026.</p>
-<p class="note">Checked against the pull request, the working group charter and the extension
-repository on 6 August 2026. Anyone can repeat those four clicks.</p>
+<p>The extension repository tracks what SEP-2127 is waiting on. Twelve items are labelled as
+blockers; ten are closed and
+<a href="https://github.com/modelcontextprotocol/experimental-ext-server-card/labels/sep-2127-blockers" rel="noopener">two are still open</a>: best
+practices for client implementors, and reference implementations in Python and Go. Both leads of
+the working group that owns the proposal reach the end of their terms on 14 August 2026.</p>
+<p class="note">Checked against the pull request, its labels, the working group charter and the
+extension repository's issue tracker on 7 August 2026. Every claim here is one click from its
+source.</p>
 
 <h2>The most-used path is in no specification</h2>
 ${pathsParagraph(data.candidates)}

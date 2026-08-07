@@ -370,6 +370,20 @@ The things that weaken our own findings. This section is not a formality.
     direction that mattered — a number that gets worse is questioned, one that
     gets better is celebrated.
 
+20. **Our AI Catalog count measures one optional location, not adoption.** We
+    probe `/.well-known/ai-catalog.json`. The AI Catalog specification does not
+    require it: a catalog is identified by its media type rather than its path,
+    it says a document may be served from any URL, and it calls use of the
+    well-known URI optional. Its full discovery procedure consults an HTTP `Link`
+    header and an HTML `<link>` element *before* falling back to the well-known
+    path, and we probe neither, because both mean fetching and parsing a page we
+    were not asked to fetch. The extension repository tracks the same gap as
+    [issue #43](https://github.com/modelcontextprotocol/experimental-ext-server-card/issues/43),
+    open since 2026-07-20. So our figure is a floor for one optional path, and
+    the right phrasing is "answered at the well-known path", never "has adopted
+    the AI Catalog". The same caution applies to every candidate we probe, but it
+    bites hardest here because this is the mechanism with a future.
+
 ## Open questions
 
 These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
@@ -397,3 +411,4 @@ These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
 | `0.1.0-draft` | 2026-08-05 | Editorial only, no change to checks or scoring. Open questions reworded to scope rather than framing. |
 | `0.2.0` | 2026-08-05 | Checks `D1`–`D4`, `F1`, `F2` implemented. Scoring split the single discovery tier into "published document" (35) and "endpoint-shaped only" (20), so an unconfirmed `D3` no longer counts the same as a card. Added the explicit refuse-to-score rules. Finalised the same day the first full census over Universe R ran (7,422 domains, 7,421 assessed) and the limitations were rewritten from what it found: the two "no discovery signal" definitions, the local-runner provenance of the first release, and the registry growth series being the registry's count rather than ours. |
 | `0.3.0` | 2026-08-07 | Candidate checks now classify *why* a probe was negative instead of recording every non-2xx as `not_found`, and failed `D1`/`D4` rows carry the roll-up as `detail`. No check was added, no request changed, and no score moved: scoring reads statuses only. Recorded the run-3 evidence gap under Reproducibility. Prompted by an external review of the published documentation. |
+| `0.3.0` | 2026-08-07 | Editorial, same day: limitation 20 records that the AI Catalog figure measures one optional path. Verified against the AI Catalog specification and the extension repository's open issue #43. |
