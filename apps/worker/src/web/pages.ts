@@ -396,7 +396,12 @@ export function checkPage(options: {
       : `<p>We could not assess this domain: <code>${esc(r.unassessedReason ?? "unknown")}</code>.
          That is a fact about our crawl, not a finding about the site.</p>`
   }
-  ${discoveryGraph(r.checks, "on_demand")}
+  ${
+    // Known domains are served their stored census rows; only an unknown domain
+    // gets the four-check quick probe. Hard-coding "on_demand" told a visitor
+    // looking at a full census measurement that it came from four checks.
+    discoveryGraph(r.checks, r.known ? "census" : "on_demand")
+  }
   ${checkTable(r.checks)}
   ${
     r.known

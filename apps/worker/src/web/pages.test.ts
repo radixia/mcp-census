@@ -809,6 +809,14 @@ describe("discovery graph", () => {
     expect(html).not.toContain("not in this run");
   });
 
+  it("does not describe a stored census result as a quick check", () => {
+    // runCheck serves the full stored rows for a known domain and only probes
+    // when it is unknown, so the profile follows `known`, never the page.
+    const full = rows(["D1", "pass", null], ["D2", "fail", null], ["D5", "skip", null]);
+    expect(discoveryGraph(full, "census")).not.toContain("four of the nine");
+    expect(discoveryGraph(full, "on_demand")).toContain("four of the nine");
+  });
+
   it("marks an advertised catalog as seen and not followed", () => {
     // The distinction a status column cannot carry, and the reason this exists.
     expect(stateOf({ check_id: "D7", status: "pass", detail: null })).toBe("observed_not_followed");
