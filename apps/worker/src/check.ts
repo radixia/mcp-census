@@ -38,6 +38,38 @@ import { loadOptOuts } from "./store.js";
 
 const CACHE_TTL_SECONDS = 3600;
 
+/**
+ * How long a failed probe is remembered.
+ *
+ * Short on purpose, and the two directions pull against each other: long enough
+ * that a domain cannot be re-probed on every request, short enough that a
+ * five-minute outage is not published as this domain's answer for an hour.
+ */
+const FAILURE_CACHE_TTL_SECONDS = 300;
+
+/** How long one probe may hold the door against a simultaneous second. */
+const LOCK_TTL_SECONDS = 30;
+
+/** Nothing was measured, and that is a fact about us rather than the domain. */
+function unassessed(apex: string, reason: string, note: string): CheckOutcome {
+  return {
+    apex,
+    score: null,
+    band: null,
+    assessed: false,
+    unassessedReason: reason,
+    checks: [],
+    fixes: [{ title: note, detail: "Nothing here is a finding about this domain." }],
+    known: false,
+  };
+}
+
+const unreachable = (apex: string): CheckOutcome =>
+  unassessed(apex, "unreachable", "We could not complete a check of this domain.");
+
+const busy = (apex: string): CheckOutcome =>
+  unassessed(apex, "unreachable", "A check of this domain is already running. Try again shortly.");
+
 /** Accepts what a person would type and returns a bare apex, or undefined. */
 export function normaliseDomain(input: string): string | undefined {
   let value = input.trim().toLowerCase();
@@ -212,21 +244,44 @@ export async function runCheck(env: Env, apex: string): Promise<CheckOutcome> {
   const cached = await env.SCAN_CACHE.get(cacheKey, "json");
   if (cached !== null) return cached as CheckOutcome;
 
-  const outcome = await quickProbe(env, apex);
+  // Collapse a herd. Many simultaneous requests for the same uncached domain
+  // each used to start their own probe, because nothing was written until the
+  // first one finished — so the per-client limit did nothing to protect the
+  // target. KV is eventually consistent, so this is not a lock and does not
+  // claim to be; it turns a stampede into a trickle, which is the part that
+  // matters to whoever is being probed.
+  const lockKey = `checking:${apex}`;
+  if ((await env.SCAN_CACHE.get(lockKey)) !== null) return busy(apex);
+  await env.SCAN_CACHE.put(lockKey, "1", { expirationTtl: LOCK_TTL_SECONDS });
 
-  await env.SCAN_CACHE.put(cacheKey, JSON.stringify(outcome), {
-    expirationTtl: CACHE_TTL_SECONDS,
-  });
+  let outcome: CheckOutcome;
+  let ttl = CACHE_TTL_SECONDS;
+  try {
+    outcome = await quickProbe(env, apex);
+  } catch {
+    // The gap this closes. A throw used to skip the cache write entirely, so a
+    // domain that reliably made us fail could be re-probed on every request:
+    // unbounded, and worst exactly when the target was already struggling.
+    // Cached briefly instead — long enough to stop the loop, short enough that
+    // a passing outage is not pinned to the domain for an hour.
+    outcome = unreachable(apex);
+    ttl = FAILURE_CACHE_TTL_SECONDS;
+  }
+
+  await env.SCAN_CACHE.put(cacheKey, JSON.stringify(outcome), { expirationTtl: ttl });
 
   // Recorded so a repeat visit is instant and so the domain can be considered
   // for a future universe — flagged self_submitted so it never enters a
-  // published denominator.
-  await env.DB.prepare(
-    `INSERT OR IGNORE INTO domains (apex, universe, source, first_seen)
-     VALUES (?, 'self', 'self_submitted', ?)`,
-  )
-    .bind(apex, new Date().toISOString())
-    .run();
+  // published denominator. Not for a domain we failed to reach: a row we know
+  // nothing about is not a candidate for anything.
+  if (outcome.assessed) {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO domains (apex, universe, source, first_seen)
+       VALUES (?, 'self', 'self_submitted', ?)`,
+    )
+      .bind(apex, new Date().toISOString())
+      .run();
+  }
 
   return outcome;
 }
