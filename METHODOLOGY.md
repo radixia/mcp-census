@@ -142,6 +142,35 @@ this list, because it turned out not to be a check: it measures the registry
 against a domain rather than measuring the domain, so it lives in a separate
 pipeline. The gap in the sequence is deliberate.
 
+### What a negative result means
+
+A check reports `pass`, `fail`, `skip` or `error`. `fail` is the one that can be
+misread, so from `0.3.0` every failed candidate check also records **why**, from
+a closed vocabulary, derived from responses already received:
+
+| Outcome | Meaning | What a reader may conclude |
+|---|---|---|
+| `absent_at_every_candidate` | Every candidate answered `404` or `410`. | The document is not at any path we publish. Still not proof of absence — see limitation 12. |
+| `inconclusive_blocked` | At least one candidate answered `401`, `402`, `403`, `407`, `429`, `451` or `5xx`, or failed at the transport. | **Nothing about the domain.** We were refused or the server broke. |
+| `invalid_document` | Something was served at a candidate and did not parse. | A publisher intended something. It is not readable by a conforming client. |
+| `mixed_negative` | Negative, but not uniformly, and nothing was blocked. | Read the per-candidate evidence. |
+
+Until `0.3.0` the code recorded every non-2xx as `not_found`. That was a
+measurement error and not a wording one: a `403` and a `404` license opposite
+conclusions, and collapsing them let "we were refused" be published as "they have
+nothing". Re-reading the frozen `0.2.0-draft` evidence for run 3 under the new
+taxonomy moves 328 of 5,283 D1 failures out of absence and into inconclusive, of
+which 145 sit in the `Absent` band. A further 630 served something that did not
+parse.
+
+Those bands are **not** restated. Scoring reads only the four statuses and never
+these labels, so no score changes; the reclassification is published as evidence
+alongside the run it describes, and the historical release stands as issued.
+
+`402` is treated as a refusal because it is common in this population: hosting
+that has been suspended answers every path with it, and counting that as absence
+attributes a billing dispute to the brand.
+
 | ID | Name | Method | Normative basis |
 |---|---|---|---|
 | `D1` | MCP server card | `GET` each candidate path; record which responded and whether it parses | none — all candidates are drafts or historical |
@@ -244,7 +273,13 @@ A third party must be able to re-run this and get comparable numbers:
 - The methodology version and candidate-set version are recorded on every row.
 - Scoring is deterministic and depends on nothing but the recorded evidence.
 - Raw response artifacts are retained so a score can be recomputed without
-  re-crawling.
+  re-crawling. **Exception, run 3.** The first full census was driven by the local
+  runner and imported with `scripts/pilot/import.ts`, which wrote the database
+  rows but not the per-domain R2 objects, although it set the `evidence_key`
+  column as though it had. The evidence itself was never lost: it is published
+  whole as `evidence/bundles/run-3.jsonl.gz`, one JSON object per domain, and the
+  per-domain keys for that run are being backfilled from it. Runs 4 onward go
+  through the Worker and are unaffected.
 - Releases are frozen snapshots under `data/releases/<date>/`.
 
 Code is Apache-2.0. Data is CC-BY-4.0.
@@ -361,3 +396,4 @@ These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
 | `0.1.0-draft` | 2026-08-04 | Initial draft. Checks defined, scoring published, nothing measured. |
 | `0.1.0-draft` | 2026-08-05 | Editorial only, no change to checks or scoring. Open questions reworded to scope rather than framing. |
 | `0.2.0` | 2026-08-05 | Checks `D1`–`D4`, `F1`, `F2` implemented. Scoring split the single discovery tier into "published document" (35) and "endpoint-shaped only" (20), so an unconfirmed `D3` no longer counts the same as a card. Added the explicit refuse-to-score rules. Finalised the same day the first full census over Universe R ran (7,422 domains, 7,421 assessed) and the limitations were rewritten from what it found: the two "no discovery signal" definitions, the local-runner provenance of the first release, and the registry growth series being the registry's count rather than ours. |
+| `0.3.0` | 2026-08-07 | Candidate checks now classify *why* a probe was negative instead of recording every non-2xx as `not_found`, and failed `D1`/`D4` rows carry the roll-up as `detail`. No check was added, no request changed, and no score moved: scoring reads statuses only. Recorded the run-3 evidence gap under Reproducibility. Prompted by an external review of the published documentation. |

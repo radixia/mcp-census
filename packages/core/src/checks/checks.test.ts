@@ -10,6 +10,7 @@ import { checkConventionalEndpoint } from "./d3-endpoint.js";
 import { checkOauthProtectedResource, oauthTargets, parseResourceMetadata } from "./d4-oauth.js";
 import { checkTextFallbacks } from "./f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./f2-crawler-posture.js";
+import { classifyStatus, rollUpOutcome } from "./outcome.js";
 import type { CheckResult } from "./types.js";
 
 const APEX = "example.com";
@@ -29,6 +30,53 @@ function harness(routes: FakeRoutes, resolveTxt: ResolveTxt = NO_TXT) {
 }
 
 const evidence = (result: CheckResult) => result.evidence as Record<string, unknown>;
+
+describe("outcome taxonomy", () => {
+  it("does not read a refusal as an absence", () => {
+    expect(classifyStatus(404)).toBe("absent");
+    expect(classifyStatus(410)).toBe("absent");
+    expect(classifyStatus(403)).toBe("blocked");
+    expect(classifyStatus(401)).toBe("blocked");
+    expect(classifyStatus(429)).toBe("blocked");
+    expect(classifyStatus(503)).toBe("blocked");
+    // Suspended hosting answers every path with this. Counting it as absence
+    // would attribute a billing dispute to the brand.
+    expect(classifyStatus(402)).toBe("blocked");
+    expect(classifyStatus(418)).toBe("unexpected_status");
+  });
+
+  it("lets one blocked candidate defeat any number of clean 404s", () => {
+    expect(rollUpOutcome(["absent", "absent", "absent"])).toBe("absent_at_every_candidate");
+    expect(rollUpOutcome(["absent", "absent", "blocked"])).toBe("inconclusive_blocked");
+    expect(rollUpOutcome(["absent", "transport_error"])).toBe("inconclusive_blocked");
+    expect(rollUpOutcome(["absent", "not_a_document"])).toBe("invalid_document");
+    expect(rollUpOutcome([])).toBe("mixed_negative");
+  });
+
+  it("reaches the published evidence: a 403 candidate makes D1 inconclusive", async () => {
+    const h = harness({
+      "https://example.com/.well-known/mcp.json": { status: 403, body: "forbidden" },
+    });
+    const result = await checkServerCard(h.deps, { apex: APEX });
+
+    expect(result.status).toBe("fail");
+    // The bug this guards: every non-2xx used to be recorded as `not_found`,
+    // so a refusal was published as "this domain has no card".
+    expect(evidence(result).outcome).toBe("inconclusive_blocked");
+    // The other candidates legitimately 404. What matters is that the refused
+    // one is not filed alongside them.
+    const candidates = evidence(result).candidates as Array<{ path: string; result: string }>;
+    const refused = candidates.find((c) => c.path === "/.well-known/mcp.json");
+    expect(refused?.result).toBe("blocked");
+  });
+
+  it("still calls a clean 404 an absence", async () => {
+    const h = harness({});
+    const result = await checkServerCard(h.deps, { apex: APEX });
+    expect(result.status).toBe("fail");
+    expect(evidence(result).outcome).toBe("absent_at_every_candidate");
+  });
+});
 
 describe("D1 — server card", () => {
   it("records which candidate responded, not merely that one did", async () => {

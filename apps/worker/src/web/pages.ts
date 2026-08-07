@@ -158,6 +158,10 @@ const DETAIL_WORDS: Record<string, string> = {
   modern: "modern protocol (2026-07-28 or later)",
   legacy: "legacy protocol (2025-11-25 or earlier)",
   unreachable: "we could not reach it",
+  absent_at_every_candidate: "nothing at any published candidate path",
+  inconclusive_blocked: "a candidate refused us, so absence is not established",
+  invalid_document: "something was served, and it did not parse as a document",
+  mixed_negative: "no document; some candidates answered in other ways",
 };
 
 /** One check table, shared by the domain page and the on-demand check. */
@@ -197,6 +201,10 @@ export function landingPage(data: {
   headline: HeadlineData;
   candidates: Array<{ candidate_id: string; n: number }>;
   runFinishedAt: string | null;
+  /** The version the run was measured under, which is not necessarily the
+   *  version this code is. Printing the constant here would have relabelled a
+   *  frozen run every time the methodology moved. */
+  runMethodologyVersion?: string | null;
   registryGrowth?: Array<{
     month: string;
     added: number;
@@ -279,7 +287,9 @@ done the harder part, so if reachability is low here it is lower everywhere else
 ${
   data.runFinishedAt === null
     ? ""
-    : `<p class="note">Last complete run ${esc(humanDate(data.runFinishedAt))}. Methodology ${esc(METHODOLOGY_VERSION)}.</p>`
+    : `<p class="note">Last complete run ${esc(humanDate(data.runFinishedAt))}. Methodology ${esc(
+        data.runMethodologyVersion ?? METHODOLOGY_VERSION,
+      )}.</p>`
 }
 
 ${(() => {

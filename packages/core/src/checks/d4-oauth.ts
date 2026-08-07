@@ -17,6 +17,7 @@
 
 import { headerValue } from "../http/types.js";
 import { type CheckContext, type CheckDeps, parseJsonObject } from "./deps.js";
+import { classifyStatus, type ProbeOutcome, rollUpOutcome } from "./outcome.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
 /**
@@ -33,13 +34,9 @@ interface OauthProbe {
   readonly candidateId: string;
   readonly host: string;
   readonly path: string;
-  readonly result:
-    | "found"
-    | "not_found"
-    | "skipped_by_robots"
-    | "transport_error"
-    | "malformed"
-    | "redirected_off_apex";
+  /** `malformed` is D4's spelling of `not_a_document`: RFC 9728 metadata that
+   *  did not parse, or parsed without the fields the RFC requires. */
+  readonly result: ProbeOutcome | "malformed";
   readonly status?: number;
   readonly authorizationServers?: readonly string[];
   readonly resourceMetadataHint?: string;
@@ -130,7 +127,7 @@ export async function checkOauthProtectedResource(
     if (response.status < 200 || response.status >= 300) {
       probes.push({
         ...base,
-        result: "not_found",
+        result: classifyStatus(response.status),
         status: response.status,
         ...(hint === undefined ? {} : { resourceMetadataHint: hint }),
       });
@@ -159,6 +156,9 @@ export async function checkOauthProtectedResource(
   const found = probes.filter((p) => p.result === "found");
   const evidence = {
     candidates: probes,
+    outcome: rollUpOutcome(
+      probes.map((p) => (p.result === "malformed" ? "not_a_document" : p.result)),
+    ),
     ...(challengeHint === undefined ? {} : { wwwAuthenticateResourceMetadata: challengeHint }),
   };
 

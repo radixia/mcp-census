@@ -16,6 +16,7 @@ export { checkToolListing, summariseToolSurface, type ToolSurface } from "./chec
 export type { CheckContext, CheckDeps, DnsCheckDeps } from "./checks/deps.js";
 export { checkTextFallbacks } from "./checks/f1-text-fallbacks.js";
 export { type AgentPostureRow, checkCrawlerPosture } from "./checks/f2-crawler-posture.js";
+export * from "./checks/outcome.js";
 export type {
   CheckId,
   CheckResult,

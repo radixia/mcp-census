@@ -138,6 +138,7 @@ describe("search indexing", () => {
       headline: { assessed: 1, unassessed: 0, anyDiscovery: 0, card: 0, confirmed: 0, nothing: 1 },
       candidates: [],
       runFinishedAt: null,
+      runMethodologyVersion: null,
     });
     expect(html).toContain('<meta name="robots" content="noindex, nofollow, noarchive">');
   });
@@ -147,6 +148,7 @@ describe("search indexing", () => {
       headline: { assessed: 1, unassessed: 0, anyDiscovery: 0, card: 0, confirmed: 0, nothing: 1 },
       candidates: [],
       runFinishedAt: null,
+      runMethodologyVersion: null,
     });
     expect(html).toContain('rel="canonical" href="https://www.radixia.ai/census/"');
   });

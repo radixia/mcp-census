@@ -166,6 +166,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
           },
           candidates: [],
           runFinishedAt: null,
+          runMethodologyVersion: null,
         }),
         HTML,
         60,
@@ -182,6 +183,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
         headline: h,
         candidates,
         runFinishedAt: run.finished_at,
+        runMethodologyVersion: run.methodology_version,
         registryGrowth: growth,
       }),
       HTML,
@@ -439,6 +441,34 @@ MCP at all: text an agent can read, and whether a crawler is welcome.</li>
 in this list because it turned out not to be a check: it measures the registry against a domain
 rather than measuring the domain, so it lives in a separate pipeline. The gap in the sequence is
 deliberate and recorded here so nobody looks for a missing column.</p>
+
+<h2>What a negative result means</h2>
+<p>A check reports pass, fail, skip or error. Fail is the one that can be misread, so from
+methodology 0.3.0 every failed candidate check also records why, from a closed vocabulary,
+worked out from responses we had already received.</p>
+<table>
+<thead><tr><th>Outcome</th><th>Meaning</th><th>What you may conclude</th></tr></thead>
+<tbody>
+<tr><td class="mono">absent_at_every_candidate</td><td>Every candidate answered 404 or 410.</td>
+<td>The document is not at any path we publish. Still not proof of absence.</td></tr>
+<tr><td class="mono">inconclusive_blocked</td><td>A candidate answered 401, 402, 403, 407, 429,
+451 or 5xx, or failed at the transport.</td><td><strong>Nothing about the domain.</strong> We were
+refused, or the server broke.</td></tr>
+<tr><td class="mono">invalid_document</td><td>Something was served and did not parse.</td>
+<td>A publisher meant to do this. A conforming client cannot read it.</td></tr>
+<tr><td class="mono">mixed_negative</td><td>Negative, but not uniformly, and nothing was
+blocked.</td><td>Read the per-candidate evidence.</td></tr>
+</tbody></table>
+<p>Until 0.3.0 the code recorded every non-2xx as <code>not_found</code>. That was a measurement
+error rather than a wording one: a 403 and a 404 support opposite conclusions, and collapsing them
+allowed "we were refused" to be published as "they have nothing". Re-reading the frozen evidence
+from the first full census under the new taxonomy moves 328 of 5,283 D1 failures out of absence,
+145 of them in the Absent band, and finds 630 domains that served something which did not parse.</p>
+<p>The published bands are not restated. Scoring reads the four statuses and never these labels, so
+no score moves; the reclassification is published beside the run it describes and the release
+stands as issued.</p>
+<p class="note">402 counts as a refusal because it is common here: hosting that has been suspended
+answers every path with it, and reading that as absence blames the brand for a billing dispute.</p>
 
 <h2>Scoring, in one sentence</h2>
 <p>A domain earns 70 of 100 points for being connectable at all, and the remaining 30 for the

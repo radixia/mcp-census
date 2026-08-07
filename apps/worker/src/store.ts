@@ -30,6 +30,12 @@ function detailOf(check: CheckResult): string | null {
   }
   if (check.id === "D3" && typeof evidence.endpointHost === "string") return "endpoint_found";
 
+  // Why a candidate check came back negative. Only meaningful on a fail: a pass
+  // needs no excuse, and a skip already carries its reason above.
+  if (check.status === "fail" && typeof evidence.outcome === "string") {
+    return evidence.outcome;
+  }
+
   return null;
 }
 

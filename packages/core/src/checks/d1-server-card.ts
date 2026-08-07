@@ -11,6 +11,7 @@ import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import { headerValue } from "../http/types.js";
 import { isWithinApex } from "../politeness.js";
 import { type CheckContext, type CheckDeps, looksLikeHtml, parseJsonObject } from "./deps.js";
+import { classifyStatus, type ProbeOutcome, rollUpOutcome } from "./outcome.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
 export interface CandidateProbe {
@@ -18,13 +19,7 @@ export interface CandidateProbe {
   readonly host: string;
   readonly path: string;
   readonly normativity: string;
-  readonly result:
-    | "found"
-    | "not_found"
-    | "skipped_by_robots"
-    | "transport_error"
-    | "not_a_document"
-    | "redirected_off_apex";
+  readonly result: ProbeOutcome;
   readonly status?: number;
   readonly documentKeys?: readonly string[];
   readonly error?: string;
@@ -128,7 +123,7 @@ export async function checkServerCard(
 
     const { response } = outcome;
     if (response.status < 200 || response.status >= 300) {
-      probes.push({ ...base, result: "not_found", status: response.status });
+      probes.push({ ...base, result: classifyStatus(response.status), status: response.status });
       continue;
     }
 
@@ -167,6 +162,7 @@ export async function checkServerCard(
   const evidence = {
     candidates: probes,
     respondedWith: found.map((p) => p.candidateId),
+    outcome: rollUpOutcome(probes.map((p) => p.result)),
   };
 
   if (found.length > 0) return pass("D1", evidence, latencyMs);

@@ -1,5 +1,12 @@
 /**
- * Load a local run's JSONL into D1 and R2 as a numbered run.
+ * Load a local run's JSONL into D1 as a numbered run.
+ *
+ * **It does not write R2.** This docstring used to say "into D1 and R2", and the
+ * rows it emits set `scans.evidence_key` as though the object existed, so run 3
+ * — the first full census — spent two days with 7,422 dangling evidence
+ * pointers. Nothing was lost, but the reproducibility claim was false for the
+ * only run the headline is computed from. If you use this, upload the evidence
+ * yourself and say so in the release notes.
  *
  * The Worker's queue path is the production route and is proven end to end. This
  * exists for the case the queue cannot serve: a bulk backfill of thousands of
@@ -54,6 +61,7 @@ function detailOf(check: Check): string | null {
     if (typeof e.era === "string") return e.era;
   }
   if (check.id === "D3" && typeof e.endpointHost === "string") return "endpoint_found";
+  if (check.status === "fail" && typeof e.outcome === "string") return e.outcome;
   return null;
 }
 
