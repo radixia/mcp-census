@@ -202,8 +202,26 @@ approval, and commit with a real message.
    the count must not be quoted. See `docs/SHADOW-2026-08-05.md`.
 3. **Seven `inferred` domains in Universe D** need hand-checking before any
    output names those companies.
-4. **Zenodo deposition** — `zenodo.json` is generated and published in the
-   release; depositing it needs Marco's account.
+4. **Zenodo deposition** — needs Marco's account, and nothing else is blocking.
+   Zenodo is CERN's open repository: it mints a **DOI**, so the dataset becomes
+   citable and survives independently of radixia.ai, which matters for a census
+   whose only copy currently sits on its author's own infrastructure.
+   - Metadata is generated at `data/releases/<date>/zenodo.json`.
+   - Easiest route: Zenodo → Settings → GitHub → enable `radixia/mcp-census`.
+     Every GitHub release then gets a DOI automatically, plus a concept DOI that
+     always resolves to the newest version.
+   - **ORCID is optional**, free, and needs no degree or affiliation — its own
+     FAQ says anyone in "research, scholarship, or innovation" may register. It
+     buys author disambiguation across future releases, nothing more; a GitHub
+     login works without it.
+   - **Before depositing:** `zenodo.json` says "Methodology 0.2.0-draft" because
+     it was generated before the document was finalised to 0.2.0. `summary.json`
+     records both the document version and the row label; decide which the DOI
+     record should cite.
+   - **Publishing a DOI is irreversible.** A record can be withdrawn but the DOI
+     persists. It may be better to deposit the 2026-09-17 launch release and list
+     this one as an earlier version, in which case only the account and the repo
+     connection are needed now.
 5. **Tranco licensing** — Tranco aggregates Cloudflare Radar under **CC BY-NC
    4.0** (non-commercial); we intend CC-BY-4.0 output from a commercial
    consultancy. Resolve **before** Phase 4 freezes an input list; re-freezing
