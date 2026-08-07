@@ -377,10 +377,24 @@ export async function adoptionSeries(
   env: Env,
 ): Promise<Array<{ run_id: number; metric: string; value: number; denominator: number }>> {
   const { results } = await env.DB.prepare(
-    `SELECT run_id, metric, value, denominator
-       FROM run_aggregates
-      WHERE universe = 'R' AND metric IN ('D1_pass', 'D5_pass')
-      ORDER BY run_id, metric`,
+    // Full-population runs only, the same rule `latestFullRun` enforces and for
+    // the same reason. The nightly watchlist is, by construction, every domain
+    // that has ever shown a discovery signal, so its share of anything is near
+    // 100% and means nothing. This chart plotted it for two runs under the
+    // caption "share of assessed domains": 52.1% publish a card, against 20.4%
+    // on the real population. A line that silently changes population is worse
+    // than no line.
+    //
+    // Both spellings of a full run, because `crawl.ts` writes NULL and the
+    // importer writes 'full'.
+    `SELECT a.run_id, a.metric, a.value, a.denominator
+       FROM run_aggregates a
+       JOIN runs r ON r.id = a.run_id
+      WHERE a.universe = 'R'
+        AND a.metric IN ('D1_pass', 'D5_pass')
+        AND r.status = 'complete'
+        AND (r.universe_filter IS NULL OR r.universe_filter = 'full')
+      ORDER BY a.run_id, a.metric`,
   ).all<{ run_id: number; metric: string; value: number; denominator: number }>();
   return results;
 }

@@ -48,6 +48,8 @@ interface Row {
   requestCount?: number;
   durationMs?: number;
   score?: { assessed: boolean; score?: number; band?: string; reason?: string };
+  /** Stamped by the runner as each domain finishes. Absent on runs 3 and 6. */
+  observedAt?: string;
 }
 
 const quote = (v: string) => `'${v.replaceAll("'", "''")}'`;
@@ -98,6 +100,7 @@ async function main(): Promise<void> {
   }
 
   const statements: string[] = [];
+  const checkIdsSeen = new Set<string>();
   const now = new Date().toISOString();
 
   // Deduplicate: a resumed run can append the same apex twice, and the schema's
@@ -115,7 +118,8 @@ async function main(): Promise<void> {
     statements.push(
       `INSERT OR IGNORE INTO scans (run_id, apex, started_at, finished_at, request_count,` +
         ` duration_ms, evidence_key, assessed, score, band, unassessed_reason) SELECT ${runId},` +
-        ` ${quote(apex)}, ${quote(now)}, ${quote(now)}, ${row.requestCount ?? 0},` +
+        ` ${quote(apex)}, ${quote(row.observedAt ?? now)}, ${quote(row.observedAt ?? now)},` +
+        ` ${row.requestCount ?? 0},` +
         ` ${row.durationMs ?? 0}, ${quote(`evidence/${apex}/${runId}.json`)}, ${assessed ? 1 : 0},` +
         ` ${assessed ? (score?.score ?? 0) : "NULL"},` +
         ` ${assessed ? quote(score?.band ?? "") : "NULL"},` +
@@ -124,6 +128,7 @@ async function main(): Promise<void> {
     );
 
     for (const check of row.checks ?? []) {
+      checkIdsSeen.add(check.id);
       const detail = detailOf(check);
       statements.push(
         `INSERT OR IGNORE INTO check_results (scan_id, check_id, status, detail, latency_ms)` +
@@ -147,6 +152,10 @@ async function main(): Promise<void> {
     }
   }
 
+  // Only checks this run actually produced. A zero for a check that did not
+  // exist yet would draw a rise out of nothing.
+  statements.push(...aggregateStatements(runId, [...checkIdsSeen].sort()));
+
   statements.push(
     `UPDATE runs SET domains_completed = (SELECT COUNT(*) FROM scans WHERE run_id = ${runId})` +
       ` WHERE id = ${runId};`,
@@ -160,3 +169,55 @@ async function main(): Promise<void> {
 }
 
 await main();
+
+/**
+ * The time-series aggregates.
+ *
+ * The Worker writes these on every crawl it drives; this script did not, so the
+ * two full-population runs were missing from `run_aggregates` entirely and the
+ * public adoption chart plotted the nightly watchlist instead — 52.1% of
+ * domains publishing a card, against 20.4% on the real population, under a
+ * caption that said "assessed domains".
+ *
+ * A check the run never ran gets no row at all. Writing a zero would draw a rise
+ * from nothing where the truth is that nobody looked: `C1` and `D7` did not
+ * exist when run 3 happened.
+ */
+function aggregateStatements(runId: number, checkIds: readonly string[]): string[] {
+  const out: string[] = [];
+  const upsert = `ON CONFLICT (run_id, universe, metric) DO UPDATE SET
+     value = excluded.value, denominator = excluded.denominator;`;
+
+  for (const check of checkIds) {
+    out.push(`INSERT INTO run_aggregates (run_id, universe, metric, value, denominator)
+SELECT ${runId}, d.universe, '${check}_pass',
+       SUM(CASE WHEN cr.status = 'pass' THEN 1 ELSE 0 END), COUNT(*)
+  FROM scans s JOIN domains d ON d.apex = s.apex
+  LEFT JOIN check_results cr ON cr.scan_id = s.id AND cr.check_id = '${check}'
+ WHERE s.run_id = ${runId} AND s.assessed = 1
+ GROUP BY d.universe
+${upsert}`);
+  }
+
+  out.push(`INSERT INTO run_aggregates (run_id, universe, metric, value, denominator)
+SELECT ${runId}, d.universe, 'no_discovery',
+       SUM(CASE WHEN NOT EXISTS (
+         SELECT 1 FROM check_results c2 WHERE c2.scan_id = s.id
+          AND c2.check_id IN ('D1','D2','D3','D4') AND c2.status = 'pass') THEN 1 ELSE 0 END),
+       COUNT(*)
+  FROM scans s JOIN domains d ON d.apex = s.apex
+ WHERE s.run_id = ${runId} AND s.assessed = 1
+ GROUP BY d.universe
+${upsert}`);
+
+  out.push(`INSERT INTO run_aggregates (run_id, universe, metric, value, denominator)
+SELECT ${runId}, d.universe, 'candidate:' || ch.candidate_id, COUNT(DISTINCT s.apex),
+       (SELECT COUNT(*) FROM scans s2 JOIN domains d2 ON d2.apex = s2.apex
+         WHERE s2.run_id = ${runId} AND s2.assessed = 1 AND d2.universe = d.universe)
+  FROM candidate_hits ch JOIN scans s ON s.id = ch.scan_id JOIN domains d ON d.apex = s.apex
+ WHERE s.run_id = ${runId}
+ GROUP BY d.universe, ch.candidate_id
+${upsert}`);
+
+  return out;
+}

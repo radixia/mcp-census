@@ -733,14 +733,17 @@ ${
 <h2>Adoption over time</h2>
 ${
   data.adoption.length === 0
-    ? '<p class="note">Needs at least two complete runs.</p>'
+    ? '<p class="note">Needs at least two runs over the whole population.</p>'
     : `<figure>${barChart(
         data.adoption.map((a) => ({
-          label: `run ${a.run_id} ${a.metric.replace("candidate:", "")}`,
+          label: `run ${a.run_id} ${a.metric.replace("candidate:", "").replace("_pass", "")}`,
           value: a.denominator === 0 ? 0 : Math.round((a.value / a.denominator) * 1000) / 10,
         })),
         { unit: "%" },
-      )}<figcaption>Share of assessed domains, by run.</figcaption></figure>`
+      )}<figcaption>Share of assessed Universe&nbsp;R domains, full-population runs only. The
+nightly watchlist is excluded: it is every domain that has ever shown a signal, so its share of
+anything is close to meaningless. <code>D1</code> is publishing a server card, <code>D5</code> a
+confirmed handshake. A check appears only from the run that first measured it.</figcaption></figure>`
 }
 `;
 
