@@ -120,6 +120,67 @@ function pathsParagraph(rows: ReadonlyArray<{ candidate_id: string; n: number }>
   return `<p>${parts.join(" ")}</p>`;
 }
 
+/**
+ * What each check asks, in the words a visitor needs.
+ *
+ * The table used to print the bare id: "D2 fail" tells a reader nothing unless
+ * they already know the methodology, and the people most likely to open a domain
+ * page are the ones who were sent the link and have never read it. Kept short
+ * enough to sit in a table cell; the methodology page carries the full definition
+ * and every row links to it.
+ */
+const CHECK_NAMES: Record<string, string> = {
+  D1: "Server card",
+  D2: "DNS record",
+  D3: "Conventional endpoint",
+  D4: "Authorization metadata",
+  D5: "Handshake",
+  D6: "Tool listing",
+  Q1: "Tool surface",
+  F1: "Text fallbacks",
+  F2: "Crawler posture",
+};
+
+/**
+ * Detail strings are identifiers written for a database column, so they are
+ * translated here rather than shown raw. Anything unmapped falls through
+ * unchanged: an unfamiliar identifier is better than an empty cell that hides
+ * the fact that something was recorded.
+ */
+const DETAIL_WORDS: Record<string, string> = {
+  skipped_by_robots: "robots.txt asked us not to look",
+  opted_out: "the owner opted out",
+  no_endpoint_discovered: "nothing to connect to was found",
+  handshake_did_not_succeed: "the handshake did not succeed, so this was not attempted",
+  not_implemented: "not implemented",
+  requires_authorization: "the server requires authorization",
+  endpoint_found: "an endpoint answered",
+  modern: "modern protocol (2026-07-28 or later)",
+  legacy: "legacy protocol (2025-11-25 or earlier)",
+  unreachable: "we could not reach it",
+};
+
+/** One check table, shared by the domain page and the on-demand check. */
+function checkTable(
+  rows: ReadonlyArray<{ check_id: string; status: string; detail: string | null }>,
+): string {
+  return `<div class="scroll"><table>
+<thead><tr><th>Check</th><th>What it asks</th><th>Result</th><th>Detail</th></tr></thead>
+<tbody>${rows
+    .map((c) => {
+      const detail =
+        c.detail === null || c.detail === "" ? "" : (DETAIL_WORDS[c.detail] ?? c.detail);
+      return `<tr><td class="mono">${esc(c.check_id)}</td><td>${esc(
+        CHECK_NAMES[c.check_id] ?? "",
+      )}</td><td>${statusPill(c.status)}</td><td class="note">${esc(detail)}</td></tr>`;
+    })
+    .join("")}</tbody>
+</table></div>
+<p class="note">A <em>skip</em> is not a failure: it means the check could not run, usually because
+an earlier one found nothing to work with. <a href="${esc(censusUrl("/methodology"))}">What each
+check does, and on what authority</a>.</p>`;
+}
+
 export function landingPage(data: {
   chrome?: PageChrome;
   headline: HeadlineData;
@@ -277,17 +338,7 @@ export function checkPage(options: {
       : `<p>We could not assess this domain: <code>${esc(r.unassessedReason ?? "unknown")}</code>.
          That is a fact about our crawl, not a finding about the site.</p>`
   }
-  <div class="scroll"><table>
-    <thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
-    <tbody>${r.checks
-      .map(
-        (c) =>
-          `<tr><td class="mono">${esc(c.check_id)}</td><td>${statusPill(c.status)}</td><td class="note">${esc(
-            c.detail ?? "",
-          )}</td></tr>`,
-      )
-      .join("")}</tbody>
-  </table></div>
+  ${checkTable(r.checks)}
   ${
     r.known
       ? `<p class="note">From the census. <a href="${esc(censusUrl(`/d/${r.apex}`))}">Permalink and history</a>.</p>`
@@ -483,15 +534,7 @@ export function domainPage(data: {
   }</p>
 </div>
 
-<div class="scroll"><table>
-<thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
-<tbody>${data.checks
-    .map(
-      (c) =>
-        `<tr><td class="mono">${esc(c.check_id)}</td><td>${statusPill(c.status)}</td><td class="note">${esc(c.detail ?? "")}</td></tr>`,
-    )
-    .join("")}</tbody>
-</table></div>
+${checkTable(data.checks)}
 
 ${
   data.history.length > 1

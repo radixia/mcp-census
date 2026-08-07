@@ -659,3 +659,62 @@ describe("the claims on the landing page", () => {
     expect(prose).not.toContain("–");
   });
 });
+
+describe("the check table a visitor actually reads", () => {
+  const ROWS = [
+    { check_id: "D1", status: "pass", detail: null },
+    { check_id: "D2", status: "fail", detail: null },
+    { check_id: "D6", status: "skip", detail: "handshake_did_not_succeed" },
+    { check_id: "F2", status: "pass", detail: null },
+  ];
+  const html = () =>
+    domainPage({
+      apex: "example.com",
+      score: 55,
+      band: "Discoverable",
+      assessed: true,
+      unassessedReason: null,
+      universe: "R",
+      methodologyVersion: "0.2.0",
+      finishedAt: "2026-08-05T10:41:42.223Z",
+      checks: ROWS,
+      history: [],
+    } as never);
+
+  it("names every check, not just its id", () => {
+    // "D2 fail" tells a reader nothing, and the people most likely to open a
+    // domain page are the ones who were sent the link and never read the
+    // methodology.
+    const out = html();
+    expect(out).toContain("Server card");
+    expect(out).toContain("DNS record");
+    expect(out).toContain("Crawler posture");
+  });
+
+  it("translates detail identifiers written for a database column", () => {
+    expect(html()).toContain("the handshake did not succeed");
+    expect(html()).not.toContain("handshake_did_not_succeed");
+  });
+
+  it("says a skip is not a failure, and links the definitions", () => {
+    const out = html();
+    expect(out).toContain("is not a failure");
+    expect(out).toContain(censusUrl("/methodology"));
+  });
+
+  it("shows an unmapped detail rather than swallowing it", () => {
+    const out = domainPage({
+      apex: "example.com",
+      score: 10,
+      band: "Text-only",
+      assessed: true,
+      unassessedReason: null,
+      universe: "R",
+      methodologyVersion: "0.2.0",
+      finishedAt: null,
+      history: [],
+      checks: [{ check_id: "D1", status: "fail", detail: "something_new_we_added" }],
+    } as never);
+    expect(out).toContain("something_new_we_added");
+  });
+});
