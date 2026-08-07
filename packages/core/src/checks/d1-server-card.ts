@@ -11,7 +11,7 @@ import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import { headerValue } from "../http/types.js";
 import { isWithinApex } from "../politeness.js";
 import { type CheckContext, type CheckDeps, looksLikeHtml, parseJsonObject } from "./deps.js";
-import { classifyStatus, type ProbeOutcome, rollUpOutcome } from "./outcome.js";
+import { type CandidateOutcome, classifyStatus, rollUpOutcome } from "./outcome.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
 export interface CandidateProbe {
@@ -19,7 +19,7 @@ export interface CandidateProbe {
   readonly host: string;
   readonly path: string;
   readonly normativity: string;
-  readonly result: ProbeOutcome;
+  readonly result: CandidateOutcome;
   readonly status?: number;
   readonly documentKeys?: readonly string[];
   readonly error?: string;

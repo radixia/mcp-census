@@ -17,7 +17,7 @@
 
 import { headerValue } from "../http/types.js";
 import { type CheckContext, type CheckDeps, parseJsonObject } from "./deps.js";
-import { classifyStatus, type ProbeOutcome, rollUpOutcome } from "./outcome.js";
+import { type CandidateOutcome, classifyStatus, rollUpOutcome } from "./outcome.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
 /**
@@ -36,7 +36,7 @@ interface OauthProbe {
   readonly path: string;
   /** `malformed` is D4's spelling of `not_a_document`: RFC 9728 metadata that
    *  did not parse, or parsed without the fields the RFC requires. */
-  readonly result: ProbeOutcome | "malformed";
+  readonly result: CandidateOutcome | "malformed";
   readonly status?: number;
   readonly authorizationServers?: readonly string[];
   readonly resourceMetadataHint?: string;

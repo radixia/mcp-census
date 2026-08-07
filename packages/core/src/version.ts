@@ -10,7 +10,7 @@
  * ran and its limitations were written from measurement rather than expectation.
  * A release that calls itself immutable cannot cite a draft.
  */
-export const METHODOLOGY_VERSION = "0.3.0";
+export const METHODOLOGY_VERSION = "0.4.0";
 
 /** Crawler build identity. Surfaced in the User-Agent. */
 export const CENSUS_VERSION = "0.1.0";

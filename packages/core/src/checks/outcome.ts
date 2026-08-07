@@ -15,7 +15,7 @@
  */
 
 /** How a single candidate probe ended. Stable; goes in the public evidence. */
-export type ProbeOutcome =
+export type CandidateOutcome =
   | "found"
   /** `404` or `410`: the candidate is not there. A reportable negative. */
   | "absent"
@@ -39,7 +39,7 @@ export type ProbeOutcome =
 const REFUSED = new Set([401, 402, 403, 407, 429, 451]);
 
 /** Classify a non-2xx response. `>= 500` is the server failing, not answering. */
-export function classifyStatus(status: number): ProbeOutcome {
+export function classifyStatus(status: number): CandidateOutcome {
   if (status === 404 || status === 410) return "absent";
   if (REFUSED.has(status) || status >= 500) return "blocked";
   return "unexpected_status";
@@ -58,7 +58,7 @@ export type CheckOutcome =
   | "invalid_document"
   | "mixed_negative";
 
-export function rollUpOutcome(probes: readonly ProbeOutcome[]): CheckOutcome {
+export function rollUpOutcome(probes: readonly CandidateOutcome[]): CheckOutcome {
   if (probes.some((p) => p === "blocked" || p === "transport_error")) {
     return "inconclusive_blocked";
   }

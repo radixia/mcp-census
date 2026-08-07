@@ -49,7 +49,20 @@ For each domain, at most:
    with the provenance of each entry.
 3. A DNS `TXT` lookup at `_mcp.<your-domain>`, per a public IETF Internet-Draft.
 4. Plain-text agent fallbacks: `/llms.txt`, `/llms-full.txt`, `/AGENTS.md`.
-5. **Only if steps 2–3 already found an MCP endpoint:** one unauthenticated
+5. **Added 2026-08-07:** one `GET` of your home page, `/`, to read the `Link`
+   header and any `<link rel="ai-catalog">` in the `<head>`. The AI Catalog
+   specification puts those ahead of the well-known path, so without this we were
+   measuring only its optional fallback and calling the result adoption.
+
+   What we do with it is bounded on purpose. We stop reading at `</head>`. We
+   record that an advertisement exists and whether its target is this domain, a
+   subdomain or somebody else — never the URL itself, because you choose that
+   string and we will not republish it. **We do not fetch it.** Following an
+   advertised URL would put a fetcher of third-party-controlled addresses inside
+   an unattended crawler, and that is a request-forgery surface we have no reason
+   to build. `/` was already on the candidate list; what is new is asking for it
+   on the apex, and reading the body.
+6. **Only if steps 2–3 already found an MCP endpoint:** one unauthenticated
    JSON-RPC `POST` to that endpoint — `server/discover` (or `initialize` for
    servers on an older protocol revision), and if that succeeds, `tools/list`.
    Both are read-only. `tools/list` returns the tool descriptions you chose to

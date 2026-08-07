@@ -19,6 +19,7 @@ import { checkConventionalEndpoint } from "./checks/d3-endpoint.js";
 import { checkOauthProtectedResource } from "./checks/d4-oauth.js";
 import { checkHandshake } from "./checks/d5-handshake.js";
 import { checkToolListing } from "./checks/d6-tools.js";
+import { checkRootAdvertisement } from "./checks/d7-root-advertisement.js";
 import type { CheckContext, DnsCheckDeps } from "./checks/deps.js";
 import { checkTextFallbacks } from "./checks/f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./checks/f2-crawler-posture.js";
@@ -51,6 +52,9 @@ export async function probeDomain(
     { id: "D1", run: () => checkServerCard(deps, context) },
     { id: "D4", run: () => checkOauthProtectedResource(deps, context) },
     { id: "D2", run: () => checkDnsDiscovery(deps, context) },
+    // Not scored. Measures the discovery route the AI Catalog spec puts *before*
+    // the well-known path and we had never looked at. See the check's docblock.
+    { id: "D7", run: () => checkRootAdvertisement(deps, context) },
     { id: "F1", run: () => checkTextFallbacks(deps, context) },
     // Last, because it needs whatever endpoint D3 or D1 turned up, and because
     // it is the only step that POSTs.

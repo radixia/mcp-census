@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import { GuardedHttpClient } from "../http/guarded-client.js";
 import type { ResolveTxt } from "../http/types.js";
 import { probeDomain } from "../probe.js";
+import { scoreDomain } from "../scoring.js";
 import { type FakeRoutes, fakeDeps, fakeHttp, TEST_IDENTITY } from "../testing/fake-http.js";
 import { checkServerCard } from "./d1-server-card.js";
 import { checkDnsDiscovery, parseMcpTxtRecord } from "./d2-dns.js";
 import { checkConventionalEndpoint } from "./d3-endpoint.js";
 import { checkOauthProtectedResource, oauthTargets, parseResourceMetadata } from "./d4-oauth.js";
+import { checkRootAdvertisement, relationOf } from "./d7-root-advertisement.js";
 import { checkTextFallbacks } from "./f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./f2-crawler-posture.js";
 import { classifyStatus, rollUpOutcome } from "./outcome.js";
@@ -30,6 +32,130 @@ function harness(routes: FakeRoutes, resolveTxt: ResolveTxt = NO_TXT) {
 }
 
 const evidence = (result: CheckResult) => result.evidence as Record<string, unknown>;
+
+describe("D7 — root-document catalog advertisement", () => {
+  it("finds a catalog advertised in the Link header", async () => {
+    const h = harness({
+      "https://example.com/": {
+        headers: {
+          "content-type": "text/html",
+          link: '<https://example.com/catalog.json>; rel="ai-catalog"',
+        },
+        body: "<html></html>",
+      },
+    });
+    const result = await checkRootAdvertisement(h.deps, { apex: APEX });
+
+    expect(result.status).toBe("pass");
+    const ev = evidence(result);
+    expect(ev.advertisements).toEqual([
+      { source: "link_header", rel: "ai-catalog", relation: "same_origin" },
+    ]);
+    // The number the working group is missing.
+    expect(ev.beyondWellKnown).toBe(true);
+  });
+
+  it("finds one in the HTML head, and stops at </head>", async () => {
+    const h = harness({
+      "https://example.com/": {
+        headers: { "content-type": "text/html; charset=utf-8" },
+        body: [
+          "<html><head>",
+          '<link rel="ai-catalog" href="/custom/catalog.json">',
+          "</head><body>",
+          '<link rel="ai-catalog" href="https://evil.example.net/x.json">',
+          "</body></html>",
+        ].join(""),
+      },
+    });
+    const result = await checkRootAdvertisement(h.deps, { apex: APEX });
+
+    const ads = evidence(result).advertisements as unknown[];
+    expect(ads).toHaveLength(1);
+    expect(ads[0]).toMatchObject({ source: "html_link", relation: "same_origin" });
+  });
+
+  it("never publishes the advertised URL, only its relation to the apex", async () => {
+    const h = harness({
+      "https://example.com/": {
+        headers: {
+          "content-type": "text/html",
+          link: '<https://tracker.example.net/pixel?who=me>; rel="ai-catalog"',
+        },
+        body: "<html></html>",
+      },
+    });
+    const result = await checkRootAdvertisement(h.deps, { apex: APEX });
+
+    const serialised = JSON.stringify(result.evidence);
+    // A publisher chooses this string. It must not reach a CC-BY dataset.
+    expect(serialised).not.toContain("tracker.example.net");
+    expect(serialised).not.toContain("who=me");
+    expect(evidence(result).advertisements).toEqual([
+      { source: "link_header", rel: "ai-catalog", relation: "third_party" },
+    ]);
+  });
+
+  it("separates an advertisement that only repeats the well-known path", () => {
+    expect(relationOf("/.well-known/ai-catalog.json", APEX)).toBe("well_known_path");
+    expect(relationOf("https://example.com/.well-known/ai-catalog.json", APEX)).toBe(
+      "well_known_path",
+    );
+    expect(relationOf("https://mcp.example.com/c.json", APEX)).toBe("subdomain");
+    expect(relationOf("https://other.test/c.json", APEX)).toBe("third_party");
+    // `malformed` is nearly unreachable: with a valid base, almost any string
+    // resolves. A scheme we cannot fetch is the case that actually occurs.
+    expect(relationOf("javascript:alert(1)", APEX)).toBe("not_http");
+    expect(relationOf("data:application/json,{}", APEX)).toBe("not_http");
+  });
+
+  it("does not move the score, which is the claim the methodology makes", async () => {
+    const withD7 = [
+      { id: "D1", status: "fail", evidence: {}, latencyMs: 1 },
+      { id: "D3", status: "fail", evidence: {}, latencyMs: 1 },
+      { id: "D7", status: "pass", evidence: {}, latencyMs: 1 },
+    ] as const;
+    const withoutD7 = withD7.filter((c) => c.id !== "D7");
+
+    expect(scoreDomain(withD7 as unknown as CheckResult[])).toEqual(
+      scoreDomain(withoutD7 as unknown as CheckResult[]),
+    );
+  });
+
+  it("ignores link relations that name something other than a catalog", async () => {
+    const h = harness({
+      "https://example.com/": {
+        headers: {
+          "content-type": "text/html",
+          link: "<https://example.com/s.css>; rel=stylesheet",
+        },
+        body: '<html><head><link rel="icon" href="/favicon.ico"></head></html>',
+      },
+    });
+    const result = await checkRootAdvertisement(h.deps, { apex: APEX });
+    expect(result.status).toBe("fail");
+    expect(evidence(result).advertisements).toEqual([]);
+  });
+});
+
+describe("evidence redaction", () => {
+  it("publishes MCP TXT records and counts the rest, never the rest", async () => {
+    const h = harness({}, async () => [
+      ["v=MCPv1; k=ed25519; p=abc"],
+      ["google-site-verification=SECRET-TOKEN"],
+      ["v=spf1 include:_spf.example.com ~all"],
+    ]);
+    const result = await checkDnsDiscovery(h.deps, { apex: APEX });
+
+    const ev = evidence(result);
+    expect(ev.records).toEqual(["v=MCPv1; k=ed25519; p=abc"]);
+    expect(ev.otherRecordCount).toBe(2);
+    // The bug this guards: 122 domains in the first census shipped somebody
+    // else's verification tokens in a CC-BY dataset.
+    expect(JSON.stringify(ev)).not.toContain("SECRET-TOKEN");
+    expect(JSON.stringify(ev)).not.toContain("spf1");
+  });
+});
 
 describe("outcome taxonomy", () => {
   it("does not read a refusal as an absence", () => {
@@ -484,6 +610,7 @@ describe("probeDomain", () => {
       "D1",
       "D4",
       "D2",
+      "D7",
       "F1",
       "D5",
       "D6",

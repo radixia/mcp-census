@@ -25,6 +25,11 @@ import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import type { CheckContext, DnsCheckDeps } from "./deps.js";
 import { type CheckResult, errored, fail, pass } from "./types.js";
 
+/** An MCP record, by the only marker every draft agrees on. */
+function isMcpRecord(record: string): boolean {
+  return /^\s*v\s*=\s*mcp/i.test(record);
+}
+
 /** Which draft's key names a record uses. */
 export type TxtRecordDialect = "serra" | "morrison" | "both" | "unknown";
 
@@ -105,7 +110,11 @@ export async function checkDnsDiscovery(
     // failure to measure.
     const message = error instanceof Error ? error.message : String(error);
     if (/ENOTFOUND|ENODATA|NXDOMAIN/i.test(message)) {
-      return fail("D2", { name, records: [], reason: "no TXT record" }, deps.now() - started);
+      return fail(
+        "D2",
+        { name, records: [], otherRecordCount: 0, reason: "no TXT record" },
+        deps.now() - started,
+      );
     }
     return errored("D2", error, deps.now() - started);
   }
@@ -115,7 +124,22 @@ export async function checkDnsDiscovery(
   const parsed = records.map(parseMcpTxtRecord).filter((r): r is McpTxtRecord => r !== undefined);
 
   const latencyMs = deps.now() - started;
-  const evidence = { name, records, mcpRecords: parsed };
+
+  // Publish the MCP records and a count of the rest — never the rest themselves.
+  //
+  // `_mcp.<apex>` usually holds only MCP records, but where a site puts
+  // everything on one name we were redistributing whatever else was there:
+  // 122 domains in the first census shipped their Google, Atlassian and similar
+  // site-verification tokens inside a CC-BY dataset, because those strings
+  // happened to share a TXT set with the record we came for. They are public in
+  // DNS, so this is not a leak; it is collection we cannot justify, and the
+  // crawler ethics we publish say we do not do it.
+  const evidence = {
+    name,
+    records: parsed.length > 0 ? records.filter(isMcpRecord) : [],
+    otherRecordCount: records.filter((r) => !isMcpRecord(r)).length,
+    mcpRecords: parsed,
+  };
 
   return parsed.length > 0 ? pass("D2", evidence, latencyMs) : fail("D2", evidence, latencyMs);
 }

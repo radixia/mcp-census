@@ -13,7 +13,32 @@
  * See docs/SPEC-NOTES.md §4 for the provenance of each entry.
  */
 
-export const CANDIDATES_VERSION = "2026-08-04";
+export const CANDIDATES_VERSION = "2026-08-07";
+
+/**
+ * What this profile measures, and — the part that matters for honesty — what it
+ * does not. Published so a reader can see the boundary of the claim without
+ * reading the crawler.
+ */
+export const MEASUREMENT_PROFILE = {
+  id: "bare_domain",
+  version: "1.1",
+  startsFrom: "apex domain only, with no page URL and no credentials",
+  included: [
+    "published well-known candidate paths",
+    "DNS TXT candidate",
+    "conventional endpoint locations",
+    "OAuth protected resource metadata",
+    "unauthenticated handshake and tool listing",
+    "catalog link relations advertised by the root document (D7, measured, not scored)",
+  ],
+  outsideProfile: [
+    "link relations on any page other than the root",
+    "fetching an advertised catalog URL",
+    "authenticated or marketplace discovery",
+    "anything requiring a user-supplied URL",
+  ],
+} as const;
 
 export type CandidateKind =
   /** Absolute path below the apex's `/.well-known/`. */

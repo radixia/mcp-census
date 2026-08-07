@@ -4,7 +4,19 @@
  * JSON-serialisable, because it is written to D1 and exported verbatim.
  */
 
-export type CheckId = "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "Q1" | "F1" | "F2" | "S1";
+export type CheckId =
+  | "D1"
+  | "D2"
+  | "D3"
+  | "D4"
+  | "D5"
+  | "D6"
+  /** Added in methodology 0.4.0. Measured, deliberately not scored. */
+  | "D7"
+  | "Q1"
+  | "F1"
+  | "F2"
+  | "S1";
 
 export type CheckStatus =
   /** The thing this check looks for was found. */
