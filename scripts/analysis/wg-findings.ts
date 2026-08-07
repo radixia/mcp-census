@@ -12,7 +12,11 @@
  *     the well-known fallback alone is losing deployments; if it is nil, the
  *     fallback is carrying everything and #43 can be closed on evidence.
  *
- *  2. **Cacheability of the documents we did find.** `#33` adopted ETag and
+ *  2. **`C1` — cards against their own servers.** `#23` closed on 2026-06-08
+ *     making it normative that a card MUST NOT contradict its runtime. This is
+ *     the first measurement of it.
+ *
+ *  3. **Cacheability of the documents we did find.** `#33` adopted ETag and
  *     conditional requests as a SHOULD on 2026-07-24. This is the first
  *     measurement of whether anyone follows it.
  *
@@ -49,6 +53,13 @@ let beyondWellKnown = 0;
 let advertisedButNoWellKnown = 0;
 let documentsFound = 0;
 
+const c1Status = new Map<string, number>();
+const contradicted = new Map<string, number>();
+let comparable = 0;
+let nameDiverges = 0;
+let cardAhead = 0;
+let cardBehind = 0;
+
 const rl = createInterface({ input: createReadStream(values.jsonl), crlfDelay: Infinity });
 
 for await (const line of rl) {
@@ -73,6 +84,36 @@ for await (const line of rl) {
     const d1 = checks.get("D1");
     const wellKnownHit = ((d1?.evidence.respondedWith ?? []) as string[]).includes("ai-catalog");
     if (d7.evidence.beyondWellKnown === true && !wellKnownHit) advertisedButNoWellKnown++;
+  }
+
+  const c1 = checks.get("C1");
+  if (c1 !== undefined) {
+    count(c1Status, c1.status);
+    if (c1.status === "pass" || c1.status === "fail") {
+      comparable++;
+      if (c1.evidence.nameDiverges === true) nameDiverges++;
+      for (const f of (c1.evidence.contradictedFields ?? []) as string[]) count(contradicted, f);
+
+      // Direction, because "cards go stale while servers advance" is the
+      // obvious story and the data does not support it.
+      if (((c1.evidence.contradictedFields ?? []) as string[]).includes("version")) {
+        const parse = (v: unknown) =>
+          typeof v === "string" && /^\d+(\.\d+)*$/.test(v) ? v.split(".").map(Number) : undefined;
+        const card = parse(
+          ((checks.get("D1")?.evidence.cardIdentity ?? {}) as { version?: unknown }).version,
+        );
+        const runtime = parse(
+          ((checks.get("D5")?.evidence.serverInfo ?? {}) as { version?: unknown }).version,
+        );
+        if (card !== undefined && runtime !== undefined) {
+          const cmp = card.join(".").localeCompare(runtime.join("."), undefined, {
+            numeric: true,
+          });
+          if (cmp > 0) cardAhead++;
+          else if (cmp < 0) cardBehind++;
+        }
+      }
+    }
   }
 
   const d1 = checks.get("D1");
@@ -122,3 +163,18 @@ console.log("  ETag by candidate path:");
 for (const [id, [withEtag, total]] of [...perCandidateEtag].sort((a, b) => b[1][1] - a[1][1])) {
   console.log(`    ${id.padEnd(30)} ${withEtag}/${total}  ${pct(withEtag, total)}`);
 }
+
+console.log(`\nC1 — the card against its own server (issue #23)`);
+for (const [k, v] of sorted(c1Status)) console.log(`  ${k.padEnd(22)} ${v}`);
+console.log(`  both sides present      ${comparable}`);
+console.log(
+  `  contradicts             ${pct(
+    [...contradicted.values()].length === 0 ? 0 : (c1Status.get("fail") ?? 0),
+    comparable,
+  )}  ${JSON.stringify(Object.fromEntries(contradicted))}`,
+);
+console.log(`  name diverges           ${nameDiverges}  ${pct(nameDiverges, comparable)}`);
+console.log(
+  `  of version conflicts: card ahead ${cardAhead}, card behind ${cardBehind}` +
+    "   <-- not drift; the two are simply unrelated",
+);
