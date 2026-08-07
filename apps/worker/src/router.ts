@@ -401,16 +401,18 @@ const STATIC_PAGES: Record<string, (chrome: PageChrome) => string> = {
 <p class="lede">Versioned, published before any score, and argued with in public. Currently
 <code>${esc(METHODOLOGY_VERSION)}</code>.</p>
 
-<h2>Conflict of interest — read this first</h2>
+<h2>Conflict of interest, first</h2>
 <p>This census is run by <a href="https://www.radixia.ai">Radixia</a>, a commercial AI and cloud
 consultancy, and <code>radixia.ai</code> is <strong>included in the measured population</strong>
 rather than excluded from it. We sell services related to the thing being measured and have an
 obvious interest in the subject appearing important. Prior work in this space tends to exclude the
 authors' own properties; excluding ourselves precisely where we happen to score well would read as
-less honest, not more. Discount our own row accordingly — everything needed to check it is public.</p>
-<p>Our own row has been wrong twice, and both are recorded in the repository: a catch-all that made
-a correct absence look like a broken document, and two server cards on paths that no current
-specification names.</p>
+less honest, not more. Discount our own row accordingly. Everything needed to check it is public.</p>
+<p>Our own row has been wrong twice, and both are recorded in the repository. A catch-all made a
+correct absence look like a broken document; our two server cards sat on paths that no current
+specification names. Both are fixed, and fixing them is the only reason we now publish
+<code>/.well-known/ai-catalog.json</code>, which the census had been measuring other people
+against while not publishing it ourselves.</p>
 
 <h2>What is measured</h2>
 <p>For each domain in a frozen population: could an agent, starting from nothing but the domain
@@ -422,11 +424,11 @@ emphatically <strong>not</strong> a security assessment.</p>
 quality of what an agent finds once connected. Discovery is weighted far above everything else
 because that is the census question.</p>
 <p>Discovery tiers are exclusive: a confirmed handshake is 70, a published discovery document 35,
-and an endpoint-shaped 405 only 20 — a 405 is consistent with any POST-only endpoint, so on its own
+and an endpoint-shaped 405 only 20. A 405 is consistent with any POST-only endpoint, so on its own
 it is a hint rather than a finding.</p>
 
 <h2>When we refuse to score</h2>
-<p>A domain gets <strong>no score at all</strong> — not a zero — when we were not permitted or not
+<p>A domain gets <strong>no score at all</strong>, and specifically not a zero, when we were not permitted or not
 able to look. Recording our own exclusion as a negative would publish a finding about our crawl
 dressed up as a finding about somebody's site. Unassessed domains are their own category and are
 excluded from every denominator.</p>
@@ -456,8 +458,8 @@ registry-derived, so it measures organisations that both run <em>and</em> regist
 CC-BY-4.0, and a stranger should be able to reproduce the headline number.</p>
 
 <h2>Reproducing it</h2>
-<p>The population is derived from the official MCP Registry's own public API, so — unlike anything
-built on a ranked domain list — the frozen universe can be republished in full and you do not need
+<p>The population is derived from the official MCP Registry's own public API. Unlike anything built on a
+ranked domain list, the frozen universe can be republished in full and you do not need
 to source a licensed input to repeat the work.</p>
 <pre class="mono">git clone ${REPO}
 pnpm install &amp;&amp; pnpm test</pre>
@@ -519,7 +521,7 @@ published on purpose, at a location a specification or a public proposal told yo
 <h2>How politely</h2>
 <ul>
 <li><strong>One request per second</strong>, maximum, per domain.</li>
-<li><strong>At most 64 domains</strong> in flight crawl-wide — that bounds how many
+<li><strong>At most 64 domains</strong> in flight crawl-wide, which bounds how many
 <em>different</em> sites we visit at once; yours never sees more than the rate above.</li>
 <li>5s connect, 10s total timeout. Exponential backoff on 429 and 5xx, then we give up.</li>
 <li>One redirect hop, and only if it stays on your domain.</li>
@@ -530,13 +532,13 @@ published on purpose, at a location a specification or a public proposal told yo
 <h2>How to opt out</h2>
 <p>Any one of these works, and we honour it within 24 hours for your domain and all subdomains:</p>
 <ul>
-<li>Email <code>census@radixia.ai</code> — one line is enough.</li>
+<li>Email <code>census@radixia.ai</code>. One line is enough.</li>
 <li>Disallow us: <code>User-agent: MCPCensus</code> then <code>Disallow: /</code></li>
 <li>Open a pull request against <a href="${REPO}/blob/main/data/optouts.txt">data/optouts.txt</a>.</li>
 </ul>
 <p>If you are already in a published dataset when you opt out, we remove your rows from the live
 site and from later releases. We will not rewrite an already-citable frozen snapshot, because that
-would break the reproducibility the project rests on — but we note the removal.</p>
+would break the reproducibility the project rests on. We note the removal instead.</p>
 
 <h2>Corrections</h2>
 <p>If we got something wrong about your domain we would rather hear it than not. Being publicly
@@ -555,10 +557,13 @@ wrong about a named domain is the failure mode we care most about avoiding.</p>
 <h1>AGNTCon + MCPCon Europe 2026</h1>
 <p class="lede">17–18 September 2026, RAI Amsterdam. The sponsors and speaking organisations are
 their own frozen universe, compiled from the public programme.</p>
-<p>This is the one cohort that cannot argue MCP is irrelevant to them — and it looks nothing like
-the open web. Server cards are an order of magnitude more common here, and the only adopters we
-have found anywhere of <code>/.well-known/ai-catalog.json</code>, the location the current proposal
-actually defers to, are in this list.</p>
+<p>This is the one cohort that cannot argue MCP is irrelevant to them. Against the open web it
+looks like a different planet: server cards are roughly ten times more common here than in the
+501-domain open-web pilot.</p>
+<p>Against the population that actually runs servers, it looks worse. A smaller share of this
+cohort publishes a server card than of the registry organisations in the main census, and only two
+of them publish <code>/.well-known/ai-catalog.json</code>, the location the current proposal defers
+to. The people on stage are not ahead of the people they are talking to.</p>
 <p><a href="${esc(censusUrl("/results?universe=D"))}">See the cohort's results</a></p>
 <p class="note">Compiled from the published programme on 2026-08-05. Several domain mappings are
 inferred rather than confirmed and are flagged as such in the frozen universe; they are safe for

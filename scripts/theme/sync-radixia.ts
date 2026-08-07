@@ -85,9 +85,9 @@ const CENSUS_ONLY = {
 const CTA = {
   heading: "Would you rather this said something else?",
   body:
-    "Radixia designs and runs the plumbing that makes a brand reachable by agents " +
-    "\u2014 MCP servers, discovery documents, and the boring parts that decide whether " +
-    "any of it can be found. We are in this dataset too.",
+    "Radixia designs and runs the plumbing that makes a brand reachable by agents: " +
+    "MCP servers, discovery documents, and the boring parts that decide whether any of " +
+    "it can be found. We are in this dataset too.",
   label: "How we work",
   url: "https://www.radixia.ai/enterprise-ai",
 } as const;

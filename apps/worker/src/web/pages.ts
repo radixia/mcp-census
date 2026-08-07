@@ -443,7 +443,7 @@ ${next < total ? `<a class="pill" href="${esc(url({ offset: next }))}">Next \u21
 <p class="note">Every row is reachable: filter by band or first letter, or page through.
 The full dataset is also a <a href="${esc(censusUrl("/data"))}">single download</a>, which is
 usually the faster way to answer a question about thousands of domains.</p>
-<p class="note">Think a row is wrong? It probably is \u2014 <a href="${esc(censusUrl("/crawler"))}">tell us</a>,
+<p class="note">Think a row is wrong? It probably is. <a href="${esc(censusUrl("/crawler"))}">Tell us</a>,
 or open an issue. Being publicly wrong about a named domain is the failure we care most about.</p>
 ${ctaCard(data.chrome)}
 `;

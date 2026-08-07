@@ -21,7 +21,7 @@ const FONT_FACES = "@font-face {\n  font-family: \"Fraunces\";\n  font-style: no
 /** Radixia's pitch. Kept factual: this is a measurement, not a warning. */
 const CTA = {
   "heading": "Would you rather this said something else?",
-  "body": "Radixia designs and runs the plumbing that makes a brand reachable by agents — MCP servers, discovery documents, and the boring parts that decide whether any of it can be found. We are in this dataset too.",
+  "body": "Radixia designs and runs the plumbing that makes a brand reachable by agents: MCP servers, discovery documents, and the boring parts that decide whether any of it can be found. We are in this dataset too.",
   "label": "How we work",
   "url": "https://www.radixia.ai/enterprise-ai"
 };

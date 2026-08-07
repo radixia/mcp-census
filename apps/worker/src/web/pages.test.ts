@@ -628,7 +628,32 @@ describe("the claims on the landing page", () => {
         },
       ],
     });
-    const body = withGrowth.slice(withGrowth.indexOf("<body>"));
+    // Both themes and both pages: the first version of this test used the neutral
+    // theme, which carries no CTA, so it never saw the dash in the CTA copy. It
+    // also never rendered /results, which had one of its own.
+    const radixia = { theme: RADIXIA_THEME, themeScript: false };
+    const surfaces = [
+      withGrowth,
+      landingPage({
+        chrome: radixia,
+        headline: HEADLINE,
+        candidates: CANDIDATES,
+        runFinishedAt: null,
+      }),
+      resultsPage({
+        chrome: radixia,
+        rows: [],
+        total: 0,
+        offset: 0,
+        bandCounts: [],
+        letterCounts: {},
+      }),
+    ];
+    // Each document's head must be stripped BEFORE joining. Slicing from the
+    // first <body> across a concatenation drags in every later document's
+    // <head>, and the <title> separator there is deliberate typography — which
+    // is how this test spent a while failing on copy that was already clean.
+    const body = surfaces.map((html) => html.slice(html.indexOf("<body>"))).join("\n");
     const prose = body.replace(/>[\s]*[—–][\s]*</g, "><").replace(/<[^>]+>/g, " ");
     expect(prose).not.toContain("—");
     expect(prose).not.toContain("–");
