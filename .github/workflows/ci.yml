@@ -1,0 +1,64 @@
+name: CI
+
+# The repository is public and the dataset is the product, so the gate is about
+# the things that would corrupt it: probe logic that no longer compiles, a check
+# the CLI cannot name, a theme edited here instead of in the brand package.
+#
+# It does not deploy. Deployment needs credentials and is a decision, not a
+# consequence of merging.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So a dependency that breaks us is found before a change does.
+  schedule:
+    - cron: "0 6 * * 1"
+
+# A second push supersedes the first; there is nothing to learn from finishing a
+# run against a commit nobody will merge.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the engines field. The probes use node:util parseArgs and
+          # --experimental-strip-types, neither of which is safe to assume older.
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Lint before the slow steps: a formatting failure should not cost a full
+      # test run to discover.
+      - name: Lint and format
+        run: pnpm lint
+
+      # `pnpm test` runs typecheck first. Kept explicit so a failure names which
+      # half broke rather than making someone read the log to find out.
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test
+
+      # The census theme is generated from @radixia/brand and must never be
+      # hand-edited. Editing it here is how the site and the census drifted apart
+      # once already, at the cost of two accessibility defects.
+      - name: Theme is still generated, not edited
+        run: pnpm theme:check

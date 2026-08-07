@@ -19,10 +19,10 @@ import {
   probeDomain,
   resolveCrawlerIdentity,
 } from "@mcp-census/core";
-
 import { dohResolveTxt, sleep, workerFetch } from "./adapters.js";
 import { computeAggregates, computeDeltas } from "./deltas.js";
 import type { CrawlMessage, Env } from "./env.js";
+import { runEvidenceBackfill } from "./evidence-backfill.js";
 import { closeRun, loadOptOuts, openRun, persistScan, persistUnreachable } from "./store.js";
 
 /**
@@ -128,6 +128,23 @@ async function sweepStalledRuns(env: Env): Promise<void> {
 export async function scheduled(event: ScheduledController, env: Env): Promise<void> {
   // Before anything else, so a stuck run cannot block deltas indefinitely.
   await sweepStalledRuns(env);
+
+  // A no-op unless somebody seeded the KV key by hand. It sits here rather than
+  // behind an endpoint so that asking for a backfill takes a deliberate act and
+  // the public zone gains no write surface. See evidence-backfill.ts.
+  const backfill = await runEvidenceBackfill(env);
+  if (backfill !== null) {
+    console.log(
+      `[census] evidence backfill run ${backfill.run}: ` +
+        `${backfill.written} written, cursor ${backfill.cursor}` +
+        `${backfill.done ? ", run complete" : ", more to do"}, ${backfill.queued} queued`,
+    );
+    // Nothing else tonight. Expanding a bundle and driving a crawl in the same
+    // invocation is two long jobs sharing one budget.
+    // One long job a night. The crawl can wait a day; the pointers have been
+    // dangling since 2026-08-05 and one more night changes nothing.
+    return;
+  }
 
   // Sunday is the full universe; every other day is the watchlist.
   const full = new Date(event.scheduledTime).getUTCDay() === 0;
