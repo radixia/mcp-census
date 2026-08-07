@@ -545,3 +545,92 @@ describe("the favicon", () => {
     expect(html).not.toContain('rel="icon" href="/census/');
   });
 });
+
+describe("the claims on the landing page", () => {
+  const CANDIDATES = [
+    { candidate_id: "mcp-server-card-json", n: 866 },
+    { candidate_id: "mcp-json", n: 839 },
+    { candidate_id: "mcp-bare", n: 157 },
+    { candidate_id: "ai-catalog", n: 127 },
+  ];
+  const land = () =>
+    landingPage({ headline: HEADLINE, candidates: CANDIDATES, runFinishedAt: null });
+
+  it("attributes 'in no specification' to the path that actually leads", () => {
+    // The prose used to say the most-deployed path was superseded and the
+    // runner-up was the unattested one. Exactly backwards: server-card.json leads
+    // at 866 and is unattested, mcp.json follows at 839 and is superseded. The
+    // sentence is now derived from the counts and the candidate inventory.
+    const html = land();
+    expect(html).toContain("/.well-known/mcp/server-card.json");
+    expect(html).toContain("appears in no specification document");
+    expect(html).not.toContain("was superseded while the ecosystem was still adopting it");
+  });
+
+  it("follows the data when the ranking changes", () => {
+    const flipped = [
+      { candidate_id: "mcp-json", n: 900 },
+      { candidate_id: "mcp-server-card-json", n: 100 },
+    ];
+    const html = landingPage({ headline: HEADLINE, candidates: flipped, runFinishedAt: null });
+    expect(html).toContain("/.well-known/mcp.json");
+    expect(html).toContain("was superseded");
+  });
+
+  it("does not let the document count be read as a domain count", () => {
+    // 2,017 documents sit on 1,507 domains, because 510 organisations publish on
+    // more than one path. Printing only the larger number next to "20% publish a
+    // server card" invites a contradiction a reader cannot resolve.
+    const html = land();
+    const total = CANDIDATES.reduce((n, c) => n + c.n, 0);
+    expect(html).toContain(`${total} documents across ${HEADLINE.card} domains`);
+  });
+
+  it("claims no superlative it cannot defend", () => {
+    const html = land().toLowerCase();
+    for (const phrase of [
+      "nobody has answered",
+      "plausibly the most",
+      "nobody implements",
+      "the only",
+    ]) {
+      expect(html, `landing page should not claim "${phrase}"`).not.toContain(phrase);
+    }
+  });
+
+  it("prints a date a person can read, not a log line", () => {
+    const html = landingPage({
+      headline: HEADLINE,
+      candidates: CANDIDATES,
+      runFinishedAt: "2026-08-05T10:41:42.223Z",
+    });
+    expect(html).toContain("5 August 2026");
+    expect(html).not.toContain("10:41:42.223Z");
+  });
+
+  it("keeps em-dashes out of body prose, as the site does", () => {
+    // Two commits on radixia/website exist purely to strip these, so it is a
+    // house rule rather than a preference of mine. Scoped to the body: the
+    // <title> separator is typography and the main site uses one there too, and a
+    // lone dash standing in for a missing value is a glyph, not prose.
+    const withGrowth = landingPage({
+      headline: HEADLINE,
+      candidates: CANDIDATES,
+      runFinishedAt: "2026-08-05T10:41:42.223Z",
+      registryGrowth: [
+        { month: "2025-09", added: 787, cumulative: 787, partial: 0, snapshot_date: "2026-08-05" },
+        {
+          month: "2026-08",
+          added: 2735,
+          cumulative: 65787,
+          partial: 1,
+          snapshot_date: "2026-08-05",
+        },
+      ],
+    });
+    const body = withGrowth.slice(withGrowth.indexOf("<body>"));
+    const prose = body.replace(/>[\s]*[—–][\s]*</g, "><").replace(/<[^>]+>/g, " ");
+    expect(prose).not.toContain("—");
+    expect(prose).not.toContain("–");
+  });
+});

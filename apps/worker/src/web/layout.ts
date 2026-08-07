@@ -128,10 +128,10 @@ ${options.body}
 </div></main>
 <footer class="bot"><div class="wrap">
 <p>A census of the agent-reachable web.${operator}
-Code Apache-2.0, data CC-BY-4.0 —
+Code Apache-2.0, data CC-BY-4.0.
 <a href="${esc(brand.repoUrl)}">${esc(brand.repoUrl.replace(/^https:\/\//, ""))}</a>.</p>
-<p>Measuring, not scanning. We never call a tool, never authenticate, never test for weaknesses —
-<a href="${esc(censusUrl("/crawler"))}">what our crawler does</a>.</p>
+<p>Measuring, not scanning. We never call a tool, never authenticate, never test for weaknesses.
+<a href="${esc(censusUrl("/crawler"))}">What our crawler does</a>.</p>
 </div></footer>
 </body>
 </html>`;

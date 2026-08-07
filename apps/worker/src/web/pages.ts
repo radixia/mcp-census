@@ -6,7 +6,13 @@
  * with JavaScript disabled.
  */
 
-import { CENSUS_VERSION, censusUrl, METHODOLOGY_VERSION } from "@mcp-census/core";
+import {
+  CENSUS_VERSION,
+  censusUrl,
+  DISCOVERY_CANDIDATES,
+  METHODOLOGY_VERSION,
+  type Normativity,
+} from "@mcp-census/core";
 
 import {
   areaChart,
@@ -50,7 +56,69 @@ export interface HeadlineData {
   readonly nothing: number;
 }
 
+/**
+ * A date a reader can hold in their head.
+ *
+ * The page used to print the stored value verbatim, milliseconds and all:
+ * "Last complete run: 2026-08-05T10:41:42.223Z". That is a log line, not a
+ * sentence. Falls back to the raw string if it will not parse, because a wrong
+ * date is worse than an ugly one.
+ */
+function humanDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 const pct = (n: number, d: number): string => (d === 0 ? "—" : `${Math.round((n / d) * 100)}%`);
+
+/**
+ * Describe the ranking of discovery paths from the data, rather than asserting it.
+ *
+ * This paragraph used to be prose, and the prose was wrong: it said the most
+ * deployed path "was superseded in flight" and the runner-up "appears in no
+ * specification document at all". It is the other way round —
+ * `/.well-known/mcp/server-card.json` leads with 866 and is the unattested one,
+ * `/.well-known/mcp.json` follows with 839 and is the superseded one. A sentence
+ * that states an ordering the data decides will invert itself the first time the
+ * data moves, so it is now derived and cannot.
+ *
+ * Normativity comes from the versioned candidate inventory, the same source the
+ * probe uses, so the page and the crawler can never disagree about what a path is.
+ */
+function pathsParagraph(rows: ReadonlyArray<{ candidate_id: string; n: number }>): string {
+  const ranked = [...rows].sort((a, b) => b.n - a.n);
+  const top = ranked[0];
+  if (top === undefined) return "";
+
+  const normativityOf = (id: string) => DISCOVERY_CANDIDATES.find((c) => c.id === id)?.normativity;
+  const WORDS: Partial<Record<Normativity, string>> = {
+    unattested: "appears in no specification document",
+    historical: "was superseded while the ecosystem was still adopting it",
+    draft: "is still a draft",
+    must: "is normative",
+  };
+
+  const label = CANDIDATE_LABELS[top.candidate_id] ?? top.candidate_id;
+  const verdict = WORDS[normativityOf(top.candidate_id) ?? "draft"];
+  const forward = ranked.find((r) => r.candidate_id === "ai-catalog");
+
+  const parts = [
+    `The path most organisations use is <code>${esc(label)}</code>, on ${esc(top.n)} domains, and it ${verdict}.`,
+    "It spread through blog posts instead.",
+  ];
+  if (forward !== undefined) {
+    parts.push(
+      `The AI Catalog, where domain-level discovery is actually heading, is on ${esc(forward.n)}.`,
+    );
+  }
+  return `<p>${parts.join(" ")}</p>`;
+}
 
 export function landingPage(data: {
   chrome?: PageChrome;
@@ -78,9 +146,9 @@ export function landingPage(data: {
   nothing an agent could use to find it. ${h.nothing} of ${h.assessed} measured.</p>
 </div>
 
-<p class="lede">We do not ask how many big websites have an MCP server — that number is
-approximately zero and already well measured. We ask the question nobody has answered: of the
-organisations that demonstrably run one, how many can an agent actually reach?</p>
+<p class="lede">How many big websites run an MCP server is a settled question: almost none, and
+Cloudflare measured it at 200,000 domains. This asks the other one. Of the organisations that
+demonstrably run a server, how many can an agent actually reach?</p>
 
 ${statGrid([
   { n: String(h.assessed), k: "organisations assessed" },
@@ -91,10 +159,8 @@ ${statGrid([
 
 <p><a class="btn" href="${esc(censusUrl("/check"))}">Check your own domain</a></p>
 
-<h2>Nobody implements where the specification is heading</h2>
-<p>Every card we find is on one path or another, and the paths do not agree. The most-deployed
-one was superseded in flight; the next appears in <strong>no specification document at all</strong>
-and propagated through blog posts.</p>
+<h2>The most-used path is in no specification</h2>
+${pathsParagraph(data.candidates)}
 ${
   cardTotal === 0
     ? '<p class="note">No cards found in this run yet.</p>'
@@ -107,22 +173,22 @@ ${
               ? ""
               : `· ${CANDIDATE_NOTES[c.candidate_id]}`,
         })),
-      )}<figcaption>Server cards found, by the path that answered. ${cardTotal} in total.</figcaption></figure>`
+      )}<figcaption>Discovery documents found, by path. ${cardTotal} documents across ${h.card} domains,
+      because ${cardTotal - h.card} organisations publish on more than one.</figcaption></figure>`
 }
 
 <h2>How to read this</h2>
-<p>Every number here excludes domains we were not permitted or not able to measure — a domain that
-blocked our crawler is reported as its own category, never as a zero. The population is
-organisations the official MCP Registry proves run a server, which is plausibly the most
-MCP-engaged population that exists; that makes a low reachability figure a
-<em>conservative</em> one.</p>
+<p>Domains we were not permitted or not able to measure are excluded from every number above. A
+domain that blocked our crawler is reported as its own category and never counted as a zero.</p>
+<p>The population is organisations the official MCP Registry proves run a server. They have already
+done the harder part, so if reachability is low here it is lower everywhere else.</p>
 <p><a href="${esc(censusUrl("/methodology"))}">Read the methodology</a> ·
 <a href="${esc(censusUrl("/data"))}">Get the data</a> ·
 <a href="${esc(censusUrl("/results"))}">See every domain</a></p>
 ${
   data.runFinishedAt === null
     ? ""
-    : `<p class="note">Last complete run: ${esc(data.runFinishedAt)}. Methodology ${esc(METHODOLOGY_VERSION)}.</p>`
+    : `<p class="note">Last complete run ${esc(humanDate(data.runFinishedAt))}. Methodology ${esc(METHODOLOGY_VERSION)}.</p>`
 }
 
 ${(() => {
@@ -139,12 +205,12 @@ ${(() => {
   if (first === undefined || last === undefined) return "";
   const partialNote =
     last.partial === 1
-      ? ` ${last.month} is still in progress at the snapshot date, so its bar is short by construction \u2014 the final point is drawn hollow for that reason.`
+      ? ` ${last.month} was still in progress at the snapshot date, so its point is short by construction and is drawn hollow for that reason.`
       : "";
   return `
-<h2>The ecosystem is growing much faster than it is reachable</h2>
+<h2>The ecosystem keeps growing. Reachability has not followed.</h2>
 <p>Servers in the official MCP Registry, cumulative. This is the registry's own count,
-not ours \u2014 a different question from whether an agent can find any of them.</p>
+not ours, and a different question from whether an agent can find any of them.</p>
 ${areaChart(points, {
   caption: `Cumulative registry entries, ${first.month} to ${last.month}. Snapshot ${last.snapshot_date}.${partialNote}`,
 })}
@@ -248,7 +314,7 @@ ${form}
 ${result}
 <p class="note">We check what you published on purpose, at the locations a specification or a public
 proposal told you to publish it. We never call a tool, never authenticate, and never test for
-weaknesses — <a href="${esc(censusUrl("/crawler"))}">exactly what we do</a>.</p>
+weaknesses. <a href="${esc(censusUrl("/crawler"))}">Exactly what we do</a>.</p>
 
 ${
   // Only after a real measurement. On the empty form there is nothing to
@@ -445,7 +511,7 @@ ${
 
 <p class="note">Measured with methodology ${esc(data.methodologyVersion)}${
     data.finishedAt === null ? "" : ` on ${esc(data.finishedAt)}`
-  }. Wrong? <a href="${esc(censusUrl("/crawler"))}">Tell us</a> — we would rather hear it from you.</p>
+  }. Wrong? <a href="${esc(censusUrl("/crawler"))}">Tell us</a>. We would rather hear it from you.</p>
 
 ${ctaCard(data.chrome)}
 `;
@@ -517,14 +583,14 @@ export function changesPage(data: {
 <h1>What changed</h1>
 <p class="lede">A change appears here only after it has persisted across two consecutive complete
 runs. During the pilot a domain answered us and then refused an hour later, purely from bot
-mitigation — at these base rates that kind of flapping produces more apparent change than real
+mitigation. At these base rates that kind of flapping produces more apparent change than real
 adoption does, so a raw feed would be mostly false. The cost is that we are about a day behind
 reality, which is the better trade.</p>
 
 ${
   data.changes.length === 0
     ? `<div class="card"><p>Nothing confirmed yet. The first run is a baseline, not a set of
-       changes — publishing it as changes would announce the entire census as news.</p></div>`
+       changes, and publishing it as changes would announce the entire census as news.</p></div>`
     : `<div class="scroll"><table>
 <thead><tr><th>Domain</th><th>What</th><th>Change</th><th>Confirmed</th></tr></thead>
 <tbody>${data.changes
