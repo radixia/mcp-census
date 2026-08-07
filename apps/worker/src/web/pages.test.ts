@@ -828,6 +828,16 @@ describe("discovery graph", () => {
     expect(html).toContain("reads the header only");
   });
 
+  it("does not describe a comparison in the words of a search", () => {
+    // C1 holds two things against each other. "not observed" says we looked for
+    // something and did not find it, which is not what happened.
+    expect(stateOf({ check_id: "C1", status: "fail", detail: null })).toBe("contradicts");
+    expect(stateOf({ check_id: "C1", status: "pass", detail: null })).toBe("agrees");
+    const html = discoveryGraph(rows(["C1", "fail", "version_contradicts"]));
+    expect(html).toContain("contradicts");
+    expect(html).not.toContain("Nothing at the paths this profile publishes");
+  });
+
   it("marks an advertised catalog as seen and not followed", () => {
     // The distinction a status column cannot carry, and the reason this exists.
     expect(stateOf({ check_id: "D7", status: "pass", detail: null })).toBe("observed_not_followed");

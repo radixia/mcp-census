@@ -30,6 +30,28 @@ function detailOf(check: CheckResult): string | null {
   }
   if (check.id === "D3" && typeof evidence.endpointHost === "string") return "endpoint_found";
 
+  // C1 fails on a field, and which one is the whole finding: a version conflict
+  // is a stale card, a protocol conflict can make a client refuse a server it
+  // could have talked to. A bare "fail" on the check most likely to be
+  // questioned is the one place a missing detail costs the most.
+  if (check.id === "C1" && check.status === "fail") {
+    const fields = (evidence.contradictedFields ?? []) as string[];
+    const version = fields.includes("version");
+    const protocol = fields.includes("protocolVersion");
+    if (version && protocol) return "version_and_protocol_contradict";
+    if (protocol) return "protocol_version_contradicts";
+    if (version) return "version_contradicts";
+  }
+
+  // D7 records why the root did not yield an advertisement.
+  if (check.id === "D7" && check.status === "fail") {
+    // A 2xx with nothing in it records no `result`, and "fail" alone reads as
+    // an error rather than as the ordinary case of a page that simply does not
+    // advertise a catalog.
+    if (typeof evidence.result === "string") return evidence.result;
+    if (typeof evidence.status === "number") return "no_advertisement";
+  }
+
   // Why a candidate check came back negative. Only meaningful on a fail: a pass
   // needs no excuse, and a skip already carries its reason above.
   if (check.status === "fail" && typeof evidence.outcome === "string") {

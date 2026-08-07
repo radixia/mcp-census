@@ -174,6 +174,13 @@ const DETAIL_WORDS: Record<string, string> = {
   no_card_found: "no card was found, so there was nothing to compare",
   card_declares_no_identity: "the card names neither itself nor a version",
   nothing_comparable: "no field appears on both sides",
+  version_contradicts: "the card states a different version from the server",
+  protocol_version_contradicts: "the card does not list the revision the server negotiated",
+  version_and_protocol_contradict: "the card disagrees on both version and protocol revision",
+  no_advertisement: "the home page answered, and advertises no catalog",
+  absent: "the home page was not there",
+  blocked: "the home page refused us, so this is inconclusive",
+  unexpected_status: "the home page answered with something we did not expect",
 };
 
 /** One check table, shared by the domain page and the on-demand check. */

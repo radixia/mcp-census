@@ -61,6 +61,21 @@ function detailOf(check: Check): string | null {
     if (typeof e.era === "string") return e.era;
   }
   if (check.id === "D3" && typeof e.endpointHost === "string") return "endpoint_found";
+  if (check.id === "C1" && check.status === "fail") {
+    const fields = (e.contradictedFields ?? []) as string[];
+    const version = fields.includes("version");
+    const protocol = fields.includes("protocolVersion");
+    if (version && protocol) return "version_and_protocol_contradict";
+    if (protocol) return "protocol_version_contradicts";
+    if (version) return "version_contradicts";
+  }
+  if (check.id === "D7" && check.status === "fail") {
+    // A 2xx with nothing in it records no `result`, and "fail" alone reads as
+    // an error rather than as the ordinary case of a page that simply does not
+    // advertise a catalog.
+    if (typeof e.result === "string") return e.result;
+    if (typeof e.status === "number") return "no_advertisement";
+  }
   if (check.status === "fail" && typeof e.outcome === "string") return e.outcome;
   return null;
 }

@@ -110,6 +110,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .gnode[data-state="observed_not_followed"]{border-left-color:var(--warn);
   border-left-style:dashed}
 .gnode[data-state="observed_not_followed"] .gstate{color:var(--warn)}
+.gnode[data-state="agrees"]{border-left-color:var(--ok)}
+.gnode[data-state="agrees"] .gstate{color:var(--ok)}
+.gnode[data-state="contradicts"]{border-left-color:var(--bad)}
+.gnode[data-state="contradicts"] .gstate{color:var(--bad)}
 .gnode[data-state="absent"]{border-left-color:var(--bad)}
 .gnode[data-state="absent"] .gstate{color:var(--bad)}
 .gnode[data-state="blocked"]{border-left-style:dotted}

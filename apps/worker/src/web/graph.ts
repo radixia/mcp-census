@@ -51,7 +51,10 @@ export type NodeState =
   /** This profile never runs it. The quick check cannot do everything. */
   | "not_in_profile"
   /** This profile does not measure it at all. */
-  | "outside_profile";
+  | "outside_profile"
+  /** C1 only: the two sides agree, or they do not. Neither is a discovery. */
+  | "agrees"
+  | "contradicts";
 
 const STATE_WORDS: Record<NodeState, string> = {
   observed: "observed",
@@ -62,6 +65,8 @@ const STATE_WORDS: Record<NodeState, string> = {
   not_in_run: "not in this run",
   not_in_profile: "not run here",
   outside_profile: "outside this profile",
+  agrees: "agrees",
+  contradicts: "contradicts",
 };
 
 export interface GraphNode {
@@ -108,6 +113,13 @@ export function stateOf(row: CheckRow | undefined): NodeState {
   // check at all, usually because it predates it. Showing the second as "not
   // reached" tells a reader we tried and failed, which is not true.
   if (row === undefined) return "not_in_run";
+  // C1 is a comparison, not a discovery. "observed" and "not observed" are the
+  // wrong words for it: nothing is being looked for, two things are being held
+  // against each other.
+  if (row.check_id === "C1") {
+    if (row.status === "pass") return "agrees";
+    if (row.status === "fail") return "contradicts";
+  }
   if (row.status === "pass") return row.check_id === "D7" ? "observed_not_followed" : "observed";
   if (row.status === "skip") return "not_attempted";
   if (row.status === "error") return "blocked";
@@ -141,6 +153,12 @@ function readingFor(
   }
   if (id === "D7" && state === "observed_not_followed") {
     return "A catalog is advertised here. We recorded that it exists and did not fetch it: following an address a publisher chooses is not something an unattended crawler should do.";
+  }
+  if (id === "C1") {
+    if (state === "contradicts") {
+      return "The card states something the server does not. A client reads the card before it can check any of it, which is why the extension made this a MUST.";
+    }
+    if (state === "agrees") return "Every field present on both sides matches.";
   }
   if (id === "D4" && state === "absent") {
     return "No authorization metadata. Authorization is optional in MCP, so this says nothing about conformance.";
