@@ -6,7 +6,18 @@
  * — the first full census — spent two days with 7,422 dangling evidence
  * pointers. Nothing was lost, but the reproducibility claim was false for the
  * only run the headline is computed from. If you use this, upload the evidence
- * yourself and say so in the release notes.
+ * yourself and say so in the release notes. Two commands, and they are the whole
+ * procedure:
+ *
+ *     wrangler r2 object put mcp-census-artifacts/evidence/bundles/run-<N>.jsonl.gz \
+ *       --file out/<run>/results.jsonl.gz --content-type application/x-ndjson \
+ *       --content-encoding gzip --remote
+ *     wrangler kv key put --binding SCAN_CACHE --remote evidence-backfill '{"runs":[<N>]}'
+ *
+ * The first puts the evidence somewhere other than a laptop. The second asks the
+ * Worker to expand it into the per-domain objects `evidence_key` points at, on
+ * its next cron: see `apps/worker/src/evidence-backfill.ts` for why that beats
+ * doing it from here.
  *
  * The Worker's queue path is the production route and is proven end to end. This
  * exists for the case the queue cannot serve: a bulk backfill of thousands of

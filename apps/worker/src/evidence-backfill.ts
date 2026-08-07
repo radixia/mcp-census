@@ -9,10 +9,12 @@
  *
  * ## Why this is not a shell script
  *
- * It was, briefly. `scripts/evidence/upload.sh` spawns one `wrangler` per
- * object: 7,422 node processes, about 1.1 per second, and at sixteen in parallel
- * **3,320 of them failed** — 45%, while the same keys succeeded one at a time.
- * Two hours per run to get half a result.
+ * It was, briefly, and the script is deleted rather than kept: it spawned one
+ * `wrangler` per object — 7,422 node processes at about 1.1 per second — and at
+ * sixteen in parallel it reported 3,320 failures while the same keys succeeded
+ * one at a time. Its failure count was not even right: a 40-key sample showed
+ * roughly 95% of the objects present, so `wrangler` had been exiting non-zero
+ * after the upload landed. Two hours per run, and a report you could not trust.
  *
  * Here the bundle is already in R2 and so is the destination, so nothing leaves
  * Cloudflare's network and each write is a binding call rather than a process.
@@ -80,13 +82,40 @@ export interface BackfillResult {
  *
  * 2 MB compressed is 38 MB of JSON, and a Worker has 128 MB. Decoding it into
  * one string would work until the population grew.
+ *
+ * Handles the stream compressed or not, because the two disagree in practice
+ * and a nightly job should not depend on which one is right today.
  */
 async function* bundleLines(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const reader = body
-    .pipeThrough(new DecompressionStream("gzip"))
-    .pipeThrough(new TextDecoderStream())
-    .getReader();
+  const raw = body.getReader();
 
+  // Sniff rather than assume. The bundle is stored gzipped, but reading it back
+  // through the CLI yields plain JSON, and it was not worth establishing which
+  // layer decompresses when the answer only has to be right once a night and
+  // getting it wrong throws. Two magic bytes settle it for whatever hands us the
+  // stream.
+  const first = await raw.read();
+  const head = first.value ?? new Uint8Array();
+  const gzipped = head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+
+  const rejoined = new ReadableStream<Uint8Array>({
+    start(controller) {
+      if (head.length > 0) controller.enqueue(head);
+      if (first.done) controller.close();
+    },
+    async pull(controller) {
+      const { done, value } = await raw.read();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+    cancel: (reason) => raw.cancel(reason),
+  });
+
+  const decoded = gzipped
+    ? rejoined.pipeThrough(new DecompressionStream("gzip")).pipeThrough(new TextDecoderStream())
+    : rejoined.pipeThrough(new TextDecoderStream());
+
+  const reader = decoded.getReader();
   let buffer = "";
   for (;;) {
     const { done, value } = await reader.read();

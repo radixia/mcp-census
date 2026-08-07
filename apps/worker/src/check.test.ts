@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runCheck } from "./check.js";
 import type { Env } from "./env.js";
+import { runEvidenceBackfill } from "./evidence-backfill.js";
 
 /**
  * The on-demand check is the one thing on this site a stranger can make us do to
@@ -126,5 +127,64 @@ describe("on-demand check, as a politeness control", () => {
     await runCheck(env, "example.com");
     const key = [...kv.keys()].find((k) => k.startsWith("check:"));
     expect(key).toMatch(/^check:\d+\.\d+\.\d+:example\.com$/);
+  });
+});
+
+describe("evidence backfill", () => {
+  const rows = [
+    { apex: "a.test", methodologyVersion: "0.4.0", checks: [{ id: "D1" }] },
+    { apex: "b.test", methodologyVersion: "0.4.0", checks: [] },
+  ];
+  const jsonl = `${rows.map((r) => JSON.stringify(r)).join("\n")}\n`;
+
+  async function gzip(text: string): Promise<Uint8Array> {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  function envWith(bundle: Uint8Array | string) {
+    const kv = new Map<string, string>([["evidence-backfill", JSON.stringify({ runs: [6] })]]);
+    const puts = new Map<string, string>();
+    const env = {
+      SCAN_CACHE: {
+        get: async (k: string, t?: string) => {
+          const v = kv.get(k);
+          return v === undefined ? null : t === "json" ? JSON.parse(v) : v;
+        },
+        put: async (k: string, v: string) => void kv.set(k, v),
+        delete: async (k: string) => void kv.delete(k),
+      },
+      ARTIFACTS: {
+        get: async () => ({ body: new Blob([bundle]).stream() }),
+        put: async (k: string, v: string) => void puts.set(k, v),
+      },
+    } as unknown as Env;
+    return { env, puts, kv };
+  }
+
+  it("reads the bundle whether it arrives compressed or not", async () => {
+    // Storing it gzipped and reading it back yields plain JSON through the CLI,
+    // so the job sniffs instead of assuming. Both paths have to work or the
+    // nightly run throws and nobody sees it until the morning.
+    for (const bundle of [await gzip(jsonl), jsonl]) {
+      const { env, puts } = envWith(bundle);
+      const result = await runEvidenceBackfill(env);
+      expect(result?.written).toBe(2);
+      expect([...puts.keys()]).toEqual(["evidence/a.test/6.json", "evidence/b.test/6.json"]);
+      expect(JSON.parse(puts.get("evidence/a.test/6.json") as string).runId).toBe(6);
+    }
+  });
+
+  it("does nothing at all when no backfill was asked for", async () => {
+    const { env } = envWith(jsonl);
+    await env.SCAN_CACHE.delete("evidence-backfill");
+    expect(await runEvidenceBackfill(env)).toBeNull();
+  });
+
+  it("clears the queue once the last run is expanded", async () => {
+    const { env, kv } = envWith(jsonl);
+    const result = await runEvidenceBackfill(env);
+    expect(result?.done).toBe(true);
+    expect(kv.has("evidence-backfill")).toBe(false);
   });
 });

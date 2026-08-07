@@ -407,6 +407,13 @@ These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
 
 ## Changelog
 
+**No published artifact carries `0.3.0`.** It was live in the code for a few
+hours on 2026-08-07 and was superseded by `0.4.0` the same day, before any run
+used it. The rows are kept because they record when each change was made; a
+reader looking for a `0.3.0` dataset will not find one, and should read the
+`0.4.0` release instead. Runs carry `0.2.0-draft` (runs 1–3), `0.2.0` (4–5) and
+`0.4.0` (6).
+
 | Version | Date | Change |
 |---|---|---|
 | `0.1.0-draft` | 2026-08-04 | Initial draft. Checks defined, scoring published, nothing measured. |
@@ -416,3 +423,4 @@ These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
 | `0.3.0` | 2026-08-07 | Editorial, same day: limitation 20 records that the AI Catalog figure measures one optional path. Verified against the AI Catalog specification and the extension repository's open issue #43. |
 | `0.4.0` | 2026-08-07 | Added `D7`, which reads the catalog link relations the AI Catalog specification consults *before* the well-known path. It is measured and deliberately **not scored**: an advertisement is not a document, and we chose not to open it. Costs one `GET` of `/` per domain; `/` was already on the candidate list, the change is asking for it on the apex and reading the head. `D2` now publishes only `v=mcp*` TXT records and a count of the rest — the first census shipped 122 domains' unrelated site-verification tokens in a CC-BY dataset, which was collection we could not justify. Candidate set `2026-08-07`. |
 | `0.4.0` | 2026-08-07 | Added `C1`, a new check family for coherence between a declaration and a runtime. It costs no request: `D1` now keeps the identity the card declares, and `C1` holds it against the `serverInfo` `D5` already recorded. Prompted by experimental-ext-server-card#23, which on 2026-06-08 made it normative that a card MUST NOT contradict its server, and which as far as we can find nobody has measured. `name` is deliberately excluded from contradiction: the first domains measured showed cards carrying a display name against runtimes reporting a software package, which no specification says must match, so a conforming publisher can trip the MUST through no fault. That ambiguity is the finding, and it is reported as divergence rather than as a violation. |
+| `0.4.0` | 2026-08-07 | Editorial, same day: the on-demand check at `/census/check` runs `D7` with `HEAD`, reading the response header and downloading no page. It is the only probe here a stranger can aim at a domain they do not own, and a home page is the heaviest thing most sites serve; in the first run 59 of 93 advertisements were in the header, so the quick check sees about two thirds and says so on the result. Recorded in the evidence as `headerOnly`. |
