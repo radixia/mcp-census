@@ -62,6 +62,15 @@ For each domain, at most:
    an unattended crawler, and that is a request-forgery surface we have no reason
    to build. `/` was already on the candidate list; what is new is asking for it
    on the apex, and reading the body.
+
+   **The on-demand check at `/census/check` does this with `HEAD`, not `GET`.**
+   It reads the response header and downloads no page. That check is the one
+   thing here a stranger can point at a domain they do not own, and a home page
+   is usually the heaviest, least cacheable thing a site serves. In the first
+   full run 59 of the 93 advertisements were in the header and 34 in the page,
+   so the quick check sees about two thirds of them, and the result page says so.
+   The full `GET` stays in the batch crawl, whose population is frozen and which
+   nobody can aim.
 6. **Only if steps 2–3 already found an MCP endpoint:** one unauthenticated
    JSON-RPC `POST` to that endpoint — `server/discover` (or `initialize` for
    servers on an older protocol revision), and if that succeeds, `tools/list`.

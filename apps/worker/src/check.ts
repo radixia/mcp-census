@@ -24,6 +24,7 @@ import {
   candidatesForCheck,
   checkCrawlerPosture,
   checkOauthProtectedResource,
+  checkRootAdvertisement,
   checkServerCard,
   checkTextFallbacks,
   GuardedHttpClient,
@@ -202,6 +203,10 @@ async function quickProbe(env: Env, apex: string): Promise<CheckOutcome> {
     () => checkCrawlerPosture(deps, context),
     () => checkServerCard(deps, context),
     () => checkOauthProtectedResource(deps, context),
+    // HEAD only. Sees the Link header, which carried 59 of the 93
+    // advertisements in the first full run, and downloads no page: this is the
+    // one probe on the site a stranger can aim at a third party.
+    () => checkRootAdvertisement(deps, context, { headerOnly: true }),
     () => checkTextFallbacks(deps, context),
   ]) {
     results.push(await run());
@@ -230,7 +235,8 @@ async function quickProbe(env: Env, apex: string): Promise<CheckOutcome> {
 export const QUICK_PROBE_REQUESTS =
   candidatesForCheck("D1").filter((c) => !c.template.includes("{endpointPath}")).length +
   candidatesForCheck("D4").length +
-  4;
+  // robots, the three text fallbacks, and one HEAD of the home page.
+  5;
 
 export async function runCheck(env: Env, apex: string): Promise<CheckOutcome> {
   const known = await fromCensus(env, apex);

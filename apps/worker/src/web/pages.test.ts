@@ -796,15 +796,18 @@ describe("discovery graph", () => {
     expect(discoveryGraph(rows(["D1", "pass", null]))).toContain("not in this run");
   });
 
-  it("does not let a four-check answer look like a nine-check one", () => {
-    // The quick check runs F2, D1, D4 and F1. Rendering the other five as
-    // "not reached" claimed we tried; "not in this run" implied it was merely
-    // stale. Both overstated the evidence behind the answer.
+  it("does not let a five-check answer look like a nine-check one", () => {
+    // The quick check runs F2, D1, D4, F1 and a HEAD-only D7. Rendering the
+    // rest as "not reached" claimed we tried; "not in this run" implied it was
+    // merely stale. Both overstated the evidence behind the answer.
     // Both checks the quick profile actually runs, so anything still unlabelled
     // is genuinely outside the profile rather than merely missing.
-    const html = discoveryGraph(rows(["D1", "pass", null], ["D4", "fail", null]), "on_demand");
+    const html = discoveryGraph(
+      rows(["D1", "pass", null], ["D4", "fail", null], ["D7", "fail", null]),
+      "on_demand",
+    );
     expect(html).toContain("not run here");
-    expect(html).toContain("four of the nine");
+    expect(html).toContain("five of the nine");
     expect(html).toContain("A DNS lookup is not available");
     expect(html).not.toContain("not in this run");
   });
@@ -813,8 +816,16 @@ describe("discovery graph", () => {
     // runCheck serves the full stored rows for a known domain and only probes
     // when it is unknown, so the profile follows `known`, never the page.
     const full = rows(["D1", "pass", null], ["D2", "fail", null], ["D5", "skip", null]);
-    expect(discoveryGraph(full, "census")).not.toContain("four of the nine");
-    expect(discoveryGraph(full, "on_demand")).toContain("four of the nine");
+    expect(discoveryGraph(full, "census")).not.toContain("five of the nine");
+    expect(discoveryGraph(full, "on_demand")).toContain("five of the nine");
+  });
+
+  it("says the quick check could not have seen an advertisement in the page", () => {
+    // HEAD sees the Link header and nothing else. A domain advertising only via
+    // an HTML <link> reads as "not observed" here and "observed" in the census,
+    // so the difference has to be on the page rather than left to be inferred.
+    const html = discoveryGraph(rows(["D7", "fail", null]), "on_demand");
+    expect(html).toContain("reads the header only");
   });
 
   it("marks an advertised catalog as seen and not followed", () => {

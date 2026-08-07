@@ -178,6 +178,26 @@ describe("D7 — root-document catalog advertisement", () => {
     expect(ev.beyondWellKnown).toBe(true);
   });
 
+  it("in header-only mode reads the header and never the page", async () => {
+    const h = harness({
+      "https://example.com/": {
+        headers: {
+          "content-type": "text/html",
+          link: '<https://example.com/c.json>; rel="ai-catalog"',
+        },
+        body: '<html><head><link rel="ai-catalog" href="/other.json"></head></html>',
+      },
+    });
+    const result = await checkRootAdvertisement(h.deps, { apex: APEX }, { headerOnly: true });
+
+    // The header advertisement only. The one in the page is invisible to HEAD,
+    // and that limit is recorded in the evidence rather than left to be inferred.
+    expect(evidence(result).advertisements).toEqual([
+      { source: "link_header", rel: "ai-catalog", relation: "same_origin" },
+    ]);
+    expect(evidence(result).headerOnly).toBe(true);
+  });
+
   it("finds one in the HTML head, and stops at </head>", async () => {
     const h = harness({
       "https://example.com/": {

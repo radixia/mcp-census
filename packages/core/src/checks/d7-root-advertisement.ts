@@ -119,12 +119,32 @@ export function parseHtmlLinks(body: string, apex: string): Advertisement[] {
   return out;
 }
 
+/**
+ * `headerOnly` trades coverage for weight, and the trade is measured.
+ *
+ * In the first full run the advertisements split 59 to the `Link` header and 34
+ * to an HTML `<link>`, so a `HEAD` sees about two thirds of them and downloads
+ * no page at all. That is the right side of the trade for the on-demand check,
+ * which any stranger can point at any domain: a home page is usually the
+ * heaviest, least cacheable thing a site serves, and we have no business holding
+ * a page of somebody else's HTML that a visitor asked us to fetch.
+ *
+ * The batch crawler keeps the full `GET`. Its population is frozen, nobody can
+ * aim it, and the missing third of the signal is the whole reason the check
+ * exists.
+ */
+export interface RootAdvertisementOptions {
+  readonly headerOnly?: boolean;
+}
+
 export async function checkRootAdvertisement(
   deps: CheckDeps,
   context: CheckContext,
+  options: RootAdvertisementOptions = {},
 ): Promise<CheckResult> {
   const started = deps.now();
-  const outcome = await deps.client.fetchPath("/", "GET");
+  const headerOnly = options.headerOnly === true;
+  const outcome = await deps.client.fetchPath("/", headerOnly ? "HEAD" : "GET");
   const latencyMs = () => deps.now() - started;
 
   if (outcome.outcome === "skipped_by_robots") {
@@ -152,13 +172,20 @@ export async function checkRootAdvertisement(
   if (link !== undefined) advertisements.push(...parseLinkHeader(link, context.apex));
 
   const contentType = headerValue(response, "content-type") ?? "";
-  if (contentType.includes("html") && response.body.length <= MAX_PARSEABLE_BODY_BYTES) {
+  if (
+    !headerOnly &&
+    contentType.includes("html") &&
+    response.body.length <= MAX_PARSEABLE_BODY_BYTES
+  ) {
     advertisements.push(...parseHtmlLinks(response.body, context.apex));
   }
 
   const evidence = {
     status: response.status,
     advertisements,
+    // In the data, not only in the interface. A reader comparing two rows must
+    // be able to see that one of them could not have found an HTML `<link>`.
+    ...(headerOnly ? { headerOnly: true } : {}),
     // The number the working group is missing: advertised somewhere other than
     // the path our well-known probe covers.
     beyondWellKnown: advertisements.some((a) => a.relation !== "well_known_path"),

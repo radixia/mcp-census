@@ -99,7 +99,6 @@ const NOT_IN_QUICK_CHECK: Record<string, string> = {
   D3: "The full census probes these; the quick check reads documents only.",
   D5: "We do not open a connection to someone else's server on a request a stranger can make.",
   D6: "Needs a connection, which this check does not open.",
-  D7: "The full census reads the home page for this; the quick check does not.",
   C1: "Needs both a card and a handshake.",
 };
 
@@ -129,7 +128,17 @@ const METHODS: Record<string, string> = {
   C1: "Compare the card's claims against the handshake",
 };
 
-function readingFor(id: string, state: NodeState, detail: string | null): string {
+function readingFor(
+  id: string,
+  state: NodeState,
+  detail: string | null,
+  headerOnly = false,
+): string {
+  if (id === "D7" && headerOnly) {
+    return state === "observed_not_followed"
+      ? "A catalog is advertised in the response header. We recorded that it exists and did not fetch it."
+      : "Nothing in the response header. This quick check reads the header only, so an advertisement in the page itself would not be seen here.";
+  }
   if (id === "D7" && state === "observed_not_followed") {
     return "A catalog is advertised here. We recorded that it exists and did not fetch it: following an address a publisher chooses is not something an unattended crawler should do.";
   }
@@ -171,7 +180,9 @@ export function buildGraph(
       method: METHODS[id] ?? "",
       reading: outOfProfile
         ? (NOT_IN_QUICK_CHECK[id] ?? "")
-        : readingFor(id, state, row?.detail ?? null),
+        : // The quick check runs D7 with HEAD, so it cannot see an HTML <link>.
+          // The row alone does not say that; the profile does.
+          readingFor(id, state, row?.detail ?? null, id === "D7" && profile === "on_demand"),
     };
   };
 
@@ -224,7 +235,7 @@ export function discoveryGraph(
 <figcaption>How far an agent gets, and where it stops. Routes run in parallel: no
 document is required to reach a server, and no server is required to publish one.${
     profile === "on_demand"
-      ? " This quick check runs four of the nine; the census runs all of them."
+      ? " This quick check runs five of the nine, and reads the home page header without downloading the page; the census runs all of them."
       : ""
   }</figcaption>
 
