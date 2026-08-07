@@ -13,6 +13,7 @@
  * is respected. Parallelism belongs *across* domains, in the runner.
  */
 
+import { checkCardRuntimeCoherence } from "./checks/c1-coherence.js";
 import { checkServerCard } from "./checks/d1-server-card.js";
 import { checkDnsDiscovery } from "./checks/d2-dns.js";
 import { checkConventionalEndpoint } from "./checks/d3-endpoint.js";
@@ -91,6 +92,9 @@ export async function probeDomain(
   } else {
     checks.push(skip("D6", "handshake_did_not_succeed"), skip("Q1", "handshake_did_not_succeed"));
   }
+
+  // No request. A pure comparison of what D1 read against what D5 heard.
+  checks.push(checkCardRuntimeCoherence(checks));
 
   return {
     apex: context.apex,

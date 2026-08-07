@@ -13,6 +13,8 @@ export type CheckId =
   | "D6"
   /** Added in methodology 0.4.0. Measured, deliberately not scored. */
   | "D7"
+  /** Coherence between a declaration and a runtime. New family in 0.4.0. */
+  | "C1"
   | "Q1"
   | "F1"
   | "F2"
@@ -38,7 +40,11 @@ export type SkipReason =
   | "opted_out"
   | "no_endpoint_discovered"
   | "handshake_did_not_succeed"
-  | "not_implemented";
+  | "not_implemented"
+  /** C1: one of the two sides it compares was not collected. */
+  | "no_card_found"
+  | "card_declares_no_identity"
+  | "nothing_comparable";
 
 export interface CheckResult {
   readonly id: CheckId;

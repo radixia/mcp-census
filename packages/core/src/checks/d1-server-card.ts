@@ -10,6 +10,7 @@
 import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import { headerValue } from "../http/types.js";
 import { isWithinApex } from "../politeness.js";
+import { type CardIdentity, identityFromCard } from "./c1-coherence.js";
 import { type CheckContext, type CheckDeps, looksLikeHtml, parseJsonObject } from "./deps.js";
 import {
   type CandidateOutcome,
@@ -89,6 +90,7 @@ export async function checkServerCard(
 ): Promise<CheckResult> {
   const started = deps.now();
   const probes: CandidateProbe[] = [];
+  let firstIdentity: CardIdentity | undefined;
 
   for (const candidate of candidatesForCheck("D1")) {
     const endpointPath = deps.client.endpointPath;
@@ -156,6 +158,11 @@ export async function checkServerCard(
       cacheability: cacheabilityOf(response.headers),
     });
 
+    if (firstIdentity === undefined) {
+      const identity = identityFromCard(document);
+      if (Object.keys(identity).length > 0) firstIdentity = identity;
+    }
+
     // A card usually names the endpoint it describes. Registering it is what
     // lets D5 confirm domains that publish a card but answer nothing at a
     // conventional path — cloudflare.com and sentry.io both look like that, and
@@ -170,6 +177,10 @@ export async function checkServerCard(
   const found = probes.filter((p) => p.result === "found");
   const evidence = {
     candidates: probes,
+    // What the card claims about itself, for C1 to hold against the handshake.
+    // Only the first card found: a domain serving several is comparing an
+    // ambiguity, not a contradiction.
+    ...(firstIdentity === undefined ? {} : { cardIdentity: firstIdentity }),
     respondedWith: found.map((p) => p.candidateId),
     outcome: rollUpOutcome(probes.map((p) => p.result)),
   };

@@ -1,3 +1,4 @@
+export * from "./checks/c1-coherence.js";
 export { checkServerCard, endpointFromCard } from "./checks/d1-server-card.js";
 export {
   checkDnsDiscovery,

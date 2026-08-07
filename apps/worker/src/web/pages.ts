@@ -132,6 +132,7 @@ function pathsParagraph(rows: ReadonlyArray<{ candidate_id: string; n: number }>
  * and every row links to it.
  */
 const CHECK_NAMES: Record<string, string> = {
+  C1: "Card against runtime",
   D7: "Catalog advertised by the root document",
   D1: "Server card",
   D2: "DNS record",
@@ -166,6 +167,9 @@ const DETAIL_WORDS: Record<string, string> = {
   invalid_document: "something was served, and it did not parse as a document",
   mixed_negative: "no document; some candidates answered in other ways",
   redirected_off_apex: "the root redirected off this domain",
+  no_card_found: "no card was found, so there was nothing to compare",
+  card_declares_no_identity: "the card names neither itself nor a version",
+  nothing_comparable: "no field appears on both sides",
 };
 
 /** One check table, shared by the domain page and the on-demand check. */

@@ -5,6 +5,7 @@ import type { ResolveTxt } from "../http/types.js";
 import { probeDomain } from "../probe.js";
 import { scoreDomain } from "../scoring.js";
 import { type FakeRoutes, fakeDeps, fakeHttp, TEST_IDENTITY } from "../testing/fake-http.js";
+import { checkCardRuntimeCoherence, compareText, identityFromCard } from "./c1-coherence.js";
 import { checkServerCard } from "./d1-server-card.js";
 import { checkDnsDiscovery, parseMcpTxtRecord } from "./d2-dns.js";
 import { checkConventionalEndpoint } from "./d3-endpoint.js";
@@ -32,6 +33,100 @@ function harness(routes: FakeRoutes, resolveTxt: ResolveTxt = NO_TXT) {
 }
 
 const evidence = (result: CheckResult) => result.evidence as Record<string, unknown>;
+
+describe("C1 — card against runtime", () => {
+  const card = (evidence: Record<string, unknown>) =>
+    ({ id: "D1", status: "pass", evidence, latencyMs: 0 }) as CheckResult;
+  const shook = (evidence: Record<string, unknown>) =>
+    ({ id: "D5", status: "pass", evidence, latencyMs: 0 }) as CheckResult;
+
+  it("does not call a naming convention a contradiction", () => {
+    // The whole design turns on this. Registry names are reverse-DNS; the same
+    // server's runtime name is usually the last segment. Comparing them
+    // literally would manufacture hundreds of accusations out of a convention.
+    expect(compareText("io.github.acme/weather", "weather")).toBe("related");
+    expect(compareText("weather", "io.github.acme/weather")).toBe("related");
+    expect(compareText("Weather ", "weather")).toBe("agree");
+    expect(compareText("weather", "invoices")).toBe("differ");
+  });
+
+  it("passes when the card and the server agree", () => {
+    const result = checkCardRuntimeCoherence([
+      card({ cardIdentity: { name: "io.acme/weather", version: "1.2.0" } }),
+      shook({ serverInfo: { name: "weather", version: "1.2.0" } }),
+    ]);
+    expect(result.status).toBe("pass");
+    expect((result.evidence as { comparisons: unknown[] }).comparisons).toEqual([
+      { field: "name", verdict: "related" },
+      { field: "version", verdict: "agree" },
+    ]);
+  });
+
+  it("reports a stale version, which is what issue #23 is about", () => {
+    const result = checkCardRuntimeCoherence([
+      card({ cardIdentity: { name: "weather", version: "1.0.0" } }),
+      shook({ serverInfo: { name: "weather", version: "2.4.1" } }),
+    ]);
+    expect(result.status).toBe("fail");
+    expect((result.evidence as { contradictedFields: string[] }).contradictedFields).toEqual([
+      "version",
+    ]);
+  });
+
+  it("records a diverging name without calling it a contradiction", () => {
+    // Observed on the first six real domains: the card carries a display name
+    // and the handshake reports the software package. Nobody is lying, and no
+    // specification says those two fields mean the same thing.
+    const result = checkCardRuntimeCoherence([
+      card({ cardIdentity: { name: "123elec MCP Server", version: "1.0.0" } }),
+      shook({ serverInfo: { name: "magento-mcp-server", version: "1.0.0" } }),
+    ]);
+    expect(result.status).toBe("pass");
+    expect(result.evidence).toMatchObject({ nameDiverges: true, contradictedFields: [] });
+  });
+
+  it("catches a card that claims a protocol revision the server did not negotiate", () => {
+    const result = checkCardRuntimeCoherence([
+      card({ cardIdentity: { protocolVersions: ["2025-11-25"] } }),
+      shook({ negotiatedVersion: "2026-07-28" }),
+    ]);
+    expect(result.status).toBe("fail");
+  });
+
+  it("never publishes the values it compared, only the verdicts", () => {
+    const result = checkCardRuntimeCoherence([
+      card({ cardIdentity: { name: "acme-internal-billing", version: "0.0.1" } }),
+      shook({ serverInfo: { name: "public-weather", version: "9.9.9" } }),
+    ]);
+    const serialised = JSON.stringify(result.evidence);
+    expect(serialised).not.toContain("acme-internal-billing");
+    expect(serialised).not.toContain("9.9.9");
+  });
+
+  it("skips rather than judging when either side is missing", () => {
+    expect(checkCardRuntimeCoherence([]).status).toBe("skip");
+    expect(
+      checkCardRuntimeCoherence([card({ cardIdentity: { name: "x" } })]).evidence,
+    ).toMatchObject({ skipReason: "handshake_did_not_succeed" });
+    expect(
+      checkCardRuntimeCoherence([card({}), shook({ serverInfo: { name: "x" } })]).evidence,
+    ).toMatchObject({ skipReason: "card_declares_no_identity" });
+  });
+
+  it("reads identity out of the shapes cards actually use", () => {
+    expect(identityFromCard({ serverInfo: { name: "a", version: "1" } })).toEqual({
+      name: "a",
+      version: "1",
+    });
+    expect(identityFromCard({ name: "b", version: "2" })).toEqual({ name: "b", version: "2" });
+    // serverInfo wins: it is the shape the handshake itself uses.
+    expect(identityFromCard({ name: "outer", serverInfo: { name: "inner" } }).name).toBe("inner");
+    expect(identityFromCard({ protocolVersion: "2026-07-28" }).protocolVersions).toEqual([
+      "2026-07-28",
+    ]);
+    expect(identityFromCard({ entries: [], host: "x" })).toEqual({});
+  });
+});
 
 describe("cacheability", () => {
   it("keeps the shape of the caching headers and never their values", () => {
@@ -643,6 +738,7 @@ describe("probeDomain", () => {
       "D5",
       "D6",
       "Q1",
+      "C1",
     ]);
     expect(result.checks.find((c) => c.id === "D1")?.status).toBe("pass");
     expect(evidence(result.checks.find((c) => c.id === "D1") as CheckResult).respondedWith).toEqual(
