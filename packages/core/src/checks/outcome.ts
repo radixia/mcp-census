@@ -68,3 +68,50 @@ export function rollUpOutcome(probes: readonly CandidateOutcome[]): CheckOutcome
   if (probes.some((p) => p === "not_a_document")) return "invalid_document";
   return "mixed_negative";
 }
+
+/**
+ * Cacheability of a document we already fetched, as categories rather than
+ * values.
+ *
+ * `experimental-ext-server-card#33` adopted ETag and conditional requests as a
+ * SHOULD for card and catalog endpoints on 2026-07-24. Nobody has measured
+ * whether publishers follow it. We receive these headers anyway, so recording
+ * their shape costs no request — and shape is all we keep: an ETag value is an
+ * opaque per-resource identifier and belongs to the publisher, not in our
+ * dataset.
+ */
+export interface DocumentCacheability {
+  readonly etag: "present" | "absent";
+  readonly lastModified: "present" | "absent";
+  readonly cacheControl: "public_revalidatable" | "public_fresh" | "private_or_no_store" | "absent";
+  readonly contentTypeFamily: "json" | "html" | "text" | "other" | "absent";
+}
+
+export function cacheabilityOf(headers: Readonly<Record<string, string>>): DocumentCacheability {
+  const get = (n: string) => headers[n]?.toLowerCase();
+  const cc = get("cache-control");
+  const type = get("content-type");
+
+  let cacheControl: DocumentCacheability["cacheControl"] = "absent";
+  if (cc !== undefined) {
+    if (cc.includes("no-store") || cc.includes("private")) cacheControl = "private_or_no_store";
+    else if (cc.includes("no-cache") || cc.includes("must-revalidate"))
+      cacheControl = "public_revalidatable";
+    else cacheControl = "public_fresh";
+  }
+
+  let contentTypeFamily: DocumentCacheability["contentTypeFamily"] = "absent";
+  if (type !== undefined) {
+    if (type.includes("json")) contentTypeFamily = "json";
+    else if (type.includes("html")) contentTypeFamily = "html";
+    else if (type.startsWith("text/")) contentTypeFamily = "text";
+    else contentTypeFamily = "other";
+  }
+
+  return {
+    etag: get("etag") === undefined ? "absent" : "present",
+    lastModified: get("last-modified") === undefined ? "absent" : "present",
+    cacheControl,
+    contentTypeFamily,
+  };
+}

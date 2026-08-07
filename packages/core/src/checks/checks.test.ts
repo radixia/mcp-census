@@ -12,7 +12,7 @@ import { checkOauthProtectedResource, oauthTargets, parseResourceMetadata } from
 import { checkRootAdvertisement, relationOf } from "./d7-root-advertisement.js";
 import { checkTextFallbacks } from "./f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./f2-crawler-posture.js";
-import { classifyStatus, rollUpOutcome } from "./outcome.js";
+import { cacheabilityOf, classifyStatus, rollUpOutcome } from "./outcome.js";
 import type { CheckResult } from "./types.js";
 
 const APEX = "example.com";
@@ -32,6 +32,34 @@ function harness(routes: FakeRoutes, resolveTxt: ResolveTxt = NO_TXT) {
 }
 
 const evidence = (result: CheckResult) => result.evidence as Record<string, unknown>;
+
+describe("cacheability", () => {
+  it("keeps the shape of the caching headers and never their values", () => {
+    const c = cacheabilityOf({
+      etag: '"a1b2c3-private-resource-id"',
+      "cache-control": "public, max-age=3600",
+      "content-type": "application/mcp-server+json",
+    });
+    expect(c).toEqual({
+      etag: "present",
+      lastModified: "absent",
+      cacheControl: "public_fresh",
+      contentTypeFamily: "json",
+    });
+    // An ETag is the publisher's opaque identifier, not our data.
+    expect(JSON.stringify(c)).not.toContain("a1b2c3");
+  });
+
+  it("separates revalidatable from merely fresh, which is what #33 asked for", () => {
+    expect(cacheabilityOf({ "cache-control": "no-cache" }).cacheControl).toBe(
+      "public_revalidatable",
+    );
+    expect(cacheabilityOf({ "cache-control": "private, max-age=0" }).cacheControl).toBe(
+      "private_or_no_store",
+    );
+    expect(cacheabilityOf({}).cacheControl).toBe("absent");
+  });
+});
 
 describe("D7 — root-document catalog advertisement", () => {
   it("finds a catalog advertised in the Link header", async () => {

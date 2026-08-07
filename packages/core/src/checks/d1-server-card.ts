@@ -11,7 +11,13 @@ import { candidatesForCheck, resolveCandidate } from "../config/candidates.js";
 import { headerValue } from "../http/types.js";
 import { isWithinApex } from "../politeness.js";
 import { type CheckContext, type CheckDeps, looksLikeHtml, parseJsonObject } from "./deps.js";
-import { type CandidateOutcome, classifyStatus, rollUpOutcome } from "./outcome.js";
+import {
+  type CandidateOutcome,
+  cacheabilityOf,
+  classifyStatus,
+  type DocumentCacheability,
+  rollUpOutcome,
+} from "./outcome.js";
 import { type CheckResult, errored, fail, pass, skip } from "./types.js";
 
 export interface CandidateProbe {
@@ -22,6 +28,8 @@ export interface CandidateProbe {
   readonly result: CandidateOutcome;
   readonly status?: number;
   readonly documentKeys?: readonly string[];
+  /** Only on a `found` probe: what the publisher said about caching it. */
+  readonly cacheability?: DocumentCacheability;
   readonly error?: string;
 }
 
@@ -145,6 +153,7 @@ export async function checkServerCard(
       result: "found",
       status: response.status,
       documentKeys: Object.keys(document).slice(0, 20),
+      cacheability: cacheabilityOf(response.headers),
     });
 
     // A card usually names the endpoint it describes. Registering it is what
