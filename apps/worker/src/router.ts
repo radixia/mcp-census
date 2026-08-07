@@ -371,18 +371,23 @@ const REPO = "https://github.com/radixia/mcp-census";
  * reader can tell a truncated download from a complete one.
  */
 const LATEST_RELEASE = {
-  date: "2026-08-05",
+  date: "2026-08-07",
   domains: 7422,
   assessed: 7421,
-  methodology: METHODOLOGY_VERSION,
-  candidates: CANDIDATES_VERSION,
+  // Pinned, not read from the running code. `METHODOLOGY_VERSION` here meant the
+  // page relabelled a frozen release every time the methodology moved: on the
+  // day 0.4.0 shipped it described the August 5th release, built under 0.2.0, as
+  // 0.4.0. A release states the version it was measured under or it states
+  // nothing.
+  methodology: "0.4.0",
+  candidates: "2026-08-07",
   files: [
-    { name: "summary.json", what: "The headline numbers and per-check pass rates", size: "805 B" },
-    { name: "census.csv", what: "One row per domain: score, band, every check", size: "800 KB" },
+    { name: "summary.json", what: "The headline numbers and per-check pass rates", size: "1.8 KB" },
+    { name: "census.csv", what: "One row per domain: score, band, every check", size: "830 KB" },
     {
       name: "census.jsonl.gz",
       what: "Per-domain rows with full evidence, one JSON object per line",
-      size: "1.6 MB",
+      size: "2.0 MB",
     },
     { name: "universe.csv", what: "The frozen population, with provenance", size: "437 KB" },
     { name: "to-parquet.sql", what: "DuckDB script: any of the above to Parquet", size: "621 B" },
@@ -390,6 +395,18 @@ const LATEST_RELEASE = {
     { name: "zenodo.json", what: "Deposition metadata for archiving", size: "1.1 KB" },
   ],
 } as const;
+
+/**
+ * Releases already published. Never rewritten, never removed: a citable
+ * artifact that changes is not one.
+ */
+const EARLIER_RELEASES = [
+  {
+    date: "2026-08-05",
+    methodology: "0.2.0",
+    what: "The first full census. Nine checks; no D7, no C1, no cacheability.",
+  },
+] as const;
 
 const STATIC_PAGES: Record<string, (chrome: PageChrome) => string> = {
   "/methodology": (chrome) =>
@@ -543,8 +560,21 @@ ${LATEST_RELEASE.files
 </tbody></table></div>
 
 <p class="note">The per-domain rows are gzipped JSONL rather than JSON: same data, one object per
-line, and 33.5&nbsp;MB becomes 1.6&nbsp;MB. <code>to-parquet.sql</code> turns any of it into Parquet
+line, and 38&nbsp;MB becomes 2&nbsp;MB. <code>to-parquet.sql</code> turns any of it into Parquet
 with DuckDB, so nobody has to trust a query service of ours to re-derive a statistic.</p>
+
+<h2>Earlier releases</h2>
+<p>Kept exactly as issued. A citable artifact that changes is not one, so a correction ships as a
+new dated release and this list only grows.</p>
+<div class="scroll"><table>
+<thead><tr><th>Release</th><th>Methodology</th><th>What it is</th></tr></thead>
+<tbody>${EARLIER_RELEASES.map(
+        (r) => `<tr>
+<td><a href="${esc(censusUrl(`/data/${r.date}/summary.json`))}"><code>${esc(r.date)}</code></a></td>
+<td class="mono">${esc(r.methodology)}</td>
+<td>${esc(r.what)}</td>
+</tr>`,
+      ).join("")}</tbody></table></div>
 
 <p><a href="${REPO}/tree/main/data/universe">Frozen universes</a> ·
 <a href="${REPO}/tree/main/data/releases">Releases in git</a> ·

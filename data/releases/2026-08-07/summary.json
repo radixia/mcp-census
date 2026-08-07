@@ -1,0 +1,89 @@
+{
+  "release": "2026-08-07",
+  "methodologyVersion": "0.4.0",
+  "candidatesVersion": "2026-08-07",
+  "domains": 7422,
+  "assessed": 7421,
+  "unassessed": 1,
+  "headline": {
+    "noDiscoverySignal": 4474,
+    "noDiscoverySignalPct": 60.3,
+    "publishesServerCard": 1515,
+    "publishesServerCardPct": 20.4,
+    "confirmedHandshake": 1657,
+    "confirmedHandshakePct": 22.3
+  },
+  "byCheck": {
+    "D1": 1515,
+    "D2": 60,
+    "D3": 1379,
+    "D4": 1212,
+    "D5": 1657,
+    "D6": 615,
+    "D7": 81,
+    "C1": 358,
+    "Q1": 486,
+    "F1": 4122,
+    "F2": 2563
+  },
+  "candidateDistribution": {
+    "mcp-server-card-json": 863,
+    "mcp-json": 847,
+    "mcp-bare": 158,
+    "ai-catalog": 132,
+    "mcp-server-serra": 21,
+    "server-card-endpoint-relative": 8
+  },
+  "protocolEra": {
+    "legacy": 1107,
+    "modern": 550
+  },
+  "rootAdvertisement": {
+    "denominator": 7422,
+    "advertising": 81,
+    "beyondWellKnown": 55,
+    "beyondWellKnownAndNoWellKnownDocument": 46,
+    "bySource": {
+      "link_header": 59,
+      "html_link": 34
+    },
+    "byTargetRelation": {
+      "same_origin": 53,
+      "well_known_path": 34,
+      "subdomain": 5,
+      "third_party": 1
+    }
+  },
+  "cardAgainstRuntime": {
+    "denominator": 478,
+    "contradicts": 120,
+    "contradictedFields": {
+      "version": 103,
+      "protocolVersion": 20
+    },
+    "nameDiverges": 135,
+    "versionConflictDirection": {
+      "cardAhead": 43,
+      "cardBehind": 51
+    }
+  },
+  "documentCacheability": {
+    "denominator": 2029,
+    "etag": {
+      "present": 1090,
+      "absent": 939
+    },
+    "cacheControl": {
+      "absent": 487,
+      "public_fresh": 963,
+      "public_revalidatable": 447,
+      "private_or_no_store": 132
+    },
+    "contentTypeFamily": {
+      "json": 2022,
+      "other": 4,
+      "text": 2,
+      "absent": 1
+    }
+  }
+}

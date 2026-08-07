@@ -29,7 +29,10 @@ const { values } = parseArgs({
   allowPositionals: true,
 });
 
-const CHECK_IDS = ["D1", "D2", "D3", "D4", "D5", "D6", "Q1", "F1", "F2"] as const;
+// Methodology order, and it is the CSV's column order: an entry out of place
+// here silently reorders a published file that people diff between releases.
+// `D7` and `C1` join in 0.4.0; both are measured and neither is scored.
+const CHECK_IDS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "C1", "Q1", "F1", "F2"] as const;
 
 interface Check {
   id: string;
@@ -180,6 +183,13 @@ async function main(): Promise<void> {
     ),
     candidateDistribution: Object.fromEntries([...candidateCounts].sort((a, b) => b[1] - a[1])),
     protocolEra: Object.fromEntries([...eraCounts].sort((a, b) => b[1] - a[1])),
+
+    // Added in 0.4.0. Each states its own denominator, because none of them is
+    // over the whole population and quoting them as if they were would be the
+    // easiest mistake to make with this file.
+    rootAdvertisement: rootAdvertisement(rows),
+    cardAgainstRuntime: cardAgainstRuntime(rows),
+    documentCacheability: documentCacheability(rows),
   };
 
   await writeFile(join(dir, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`, "utf8");
@@ -314,3 +324,134 @@ Code Apache-2.0. Data CC-BY-4.0.
 }
 
 await main();
+
+/**
+ * `D7`, the discovery route the AI Catalog specification consults before the
+ * well-known path. The figure that matters is the last one: advertised where our
+ * well-known probe cannot see it, which is what
+ * experimental-ext-server-card#43 is open about and has no data for.
+ */
+function rootAdvertisement(rows: readonly Row[]) {
+  const bySource = new Map<string, number>();
+  const byRelation = new Map<string, number>();
+  let advertising = 0;
+  let beyondWellKnown = 0;
+  let beyondAndNoWellKnown = 0;
+
+  for (const row of rows) {
+    const d7 = row.checks?.find((c) => c.id === "D7");
+    if (d7 === undefined) continue;
+    const ads = (d7.evidence.advertisements ?? []) as Array<{
+      source: string;
+      relation: string;
+    }>;
+    if (ads.length > 0) advertising++;
+    for (const a of ads) {
+      bySource.set(a.source, (bySource.get(a.source) ?? 0) + 1);
+      byRelation.set(a.relation, (byRelation.get(a.relation) ?? 0) + 1);
+    }
+    if (d7.evidence.beyondWellKnown !== true) continue;
+    beyondWellKnown++;
+    const d1 = row.checks?.find((c) => c.id === "D1");
+    const responded = (d1?.evidence.respondedWith ?? []) as string[];
+    if (!responded.includes("ai-catalog")) beyondAndNoWellKnown++;
+  }
+
+  return {
+    denominator: rows.length,
+    advertising,
+    beyondWellKnown,
+    beyondWellKnownAndNoWellKnownDocument: beyondAndNoWellKnown,
+    bySource: Object.fromEntries(bySource),
+    byTargetRelation: Object.fromEntries(byRelation),
+  };
+}
+
+/**
+ * `C1`. The denominator is domains where a card and a handshake both exist, not
+ * the population — 478 of 7,422 in the first run that measured it.
+ *
+ * `nameDiverges` is reported apart from the contradictions on purpose: a card
+ * carrying a display name against a runtime reporting a software package is not
+ * a publisher in breach, it is two fields with no shared declared meaning.
+ */
+function cardAgainstRuntime(rows: readonly Row[]) {
+  const contradicted = new Map<string, number>();
+  let comparable = 0;
+  let contradicts = 0;
+  let nameDiverges = 0;
+  let cardAhead = 0;
+  let cardBehind = 0;
+
+  const numeric = (v: unknown) =>
+    typeof v === "string" && /^\d+(\.\d+)*$/.test(v) ? v : undefined;
+
+  for (const row of rows) {
+    const c1 = row.checks?.find((c) => c.id === "C1");
+    if (c1 === undefined || (c1.status !== "pass" && c1.status !== "fail")) continue;
+    comparable++;
+    if (c1.evidence.nameDiverges === true) nameDiverges++;
+    const fields = (c1.evidence.contradictedFields ?? []) as string[];
+    if (fields.length > 0) contradicts++;
+    for (const f of fields) contradicted.set(f, (contradicted.get(f) ?? 0) + 1);
+
+    if (!fields.includes("version")) continue;
+    const card = numeric(
+      (
+        (row.checks?.find((c) => c.id === "D1")?.evidence.cardIdentity ?? {}) as {
+          version?: unknown;
+        }
+      ).version,
+    );
+    const runtime = numeric(
+      (
+        (row.checks?.find((c) => c.id === "D5")?.evidence.serverInfo ?? {}) as {
+          version?: unknown;
+        }
+      ).version,
+    );
+    if (card === undefined || runtime === undefined) continue;
+    const cmp = card.localeCompare(runtime, undefined, { numeric: true });
+    if (cmp > 0) cardAhead++;
+    else if (cmp < 0) cardBehind++;
+  }
+
+  return {
+    denominator: comparable,
+    contradicts,
+    contradictedFields: Object.fromEntries(contradicted),
+    nameDiverges,
+    // Not drift. If cards merely went stale they would nearly all be behind.
+    versionConflictDirection: { cardAhead, cardBehind },
+  };
+}
+
+/** Cacheability of the documents found, against the SHOULD adopted in #33. */
+function documentCacheability(rows: readonly Row[]) {
+  const etag = new Map<string, number>();
+  const cacheControl = new Map<string, number>();
+  const contentType = new Map<string, number>();
+  let documents = 0;
+
+  for (const row of rows) {
+    const d1 = row.checks?.find((c) => c.id === "D1");
+    for (const probe of (d1?.evidence.candidates ?? []) as Array<{
+      result: string;
+      cacheability?: Record<string, string>;
+    }>) {
+      if (probe.result !== "found" || probe.cacheability === undefined) continue;
+      documents++;
+      const c = probe.cacheability;
+      etag.set(c.etag, (etag.get(c.etag) ?? 0) + 1);
+      cacheControl.set(c.cacheControl, (cacheControl.get(c.cacheControl) ?? 0) + 1);
+      contentType.set(c.contentTypeFamily, (contentType.get(c.contentTypeFamily) ?? 0) + 1);
+    }
+  }
+
+  return {
+    denominator: documents,
+    etag: Object.fromEntries(etag),
+    cacheControl: Object.fromEntries(cacheControl),
+    contentTypeFamily: Object.fromEntries(contentType),
+  };
+}
