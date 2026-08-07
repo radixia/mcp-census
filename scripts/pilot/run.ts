@@ -305,6 +305,9 @@ async function loadDone(path: string): Promise<Set<string>> {
   }
 }
 
+/** One clock read per finished domain, so a row can say when it was measured. */
+const nowIso = () => new Date().toISOString();
+
 async function main(): Promise<void> {
   const allDomains = await loadDomains();
   const optOuts = await loadOptOuts(values.optouts as string);
@@ -335,7 +338,15 @@ async function main(): Promise<void> {
     (apex) => probeOne(apex, optOuts),
     (row, completed) => {
       // Append-only, one JSON object per line, flushed as each domain finishes.
-      void appendFile(jsonlPath, `${JSON.stringify(row.result ?? row)}\n`, "utf8");
+      //
+      // `observedAt` is stamped here because the probe result does not carry
+      // one, and without it `scripts/pilot/import.ts` has nothing to put in
+      // `scans.started_at`: runs 3 and 6 both landed with all 7,422 rows sharing
+      // a single timestamp, which reads as a measurement taken in one instant.
+      // A domain finishing now is the closest true statement available, and it
+      // costs a clock read.
+      const observed = row.result === undefined ? row : { ...row.result, observedAt: nowIso() };
+      void appendFile(jsonlPath, `${JSON.stringify(observed)}\n`, "utf8");
 
       const score = row.result?.score;
       const verdict = row.guardViolation

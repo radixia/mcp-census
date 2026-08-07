@@ -442,9 +442,16 @@ function documentCacheability(rows: readonly Row[]) {
       if (probe.result !== "found" || probe.cacheability === undefined) continue;
       documents++;
       const c = probe.cacheability;
-      etag.set(c.etag, (etag.get(c.etag) ?? 0) + 1);
-      cacheControl.set(c.cacheControl, (cacheControl.get(c.cacheControl) ?? 0) + 1);
-      contentType.set(c.contentTypeFamily, (contentType.get(c.contentTypeFamily) ?? 0) + 1);
+      // A field this run did not record counts as `unrecorded` rather than
+      // vanishing: a category that silently drops rows makes the denominators
+      // below disagree with each other.
+      const bump = (m: Map<string, number>, v: string | undefined) => {
+        const key = v ?? "unrecorded";
+        m.set(key, (m.get(key) ?? 0) + 1);
+      };
+      bump(etag, c.etag);
+      bump(cacheControl, c.cacheControl);
+      bump(contentType, c.contentTypeFamily);
     }
   }
 

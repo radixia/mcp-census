@@ -8,6 +8,10 @@
 
 import type { CheckId, CheckResult, DomainProbeResult } from "@mcp-census/core";
 
+// Exhaustive over `CheckId` on purpose. It is the one place the compiler will
+// tell us a check was added and the CLI never learned its name — which is how
+// `C1` and `D7` were briefly nameless here while both were already shipping in
+// the public dataset.
 const CHECK_NAMES: Record<CheckId, string> = {
   D1: "Server card",
   D2: "DNS discovery",
@@ -15,6 +19,8 @@ const CHECK_NAMES: Record<CheckId, string> = {
   D4: "OAuth protected resource",
   D5: "Handshake",
   D6: "Tool listing",
+  D7: "Catalog advertised by the root document",
+  C1: "Card against runtime",
   Q1: "Tool surface quality",
   F1: "Text fallbacks",
   F2: "AI crawler posture",
