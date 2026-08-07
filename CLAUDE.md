@@ -155,6 +155,60 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 
 ---
 
+## Methodology 0.4.0 — what the checks measure now
+
+Three additions on 2026-08-07, all prompted by reading the working group's own
+open issues rather than by inventing metrics.
+
+- **`D7` — catalog advertised by the root document.** `GET /`, read the `Link`
+  header and `<link>` in the `<head>`. The AI Catalog specification consults
+  those *before* the well-known path and calls the well-known path optional, so
+  everything we published before this came from the fallback alone. **We record
+  the advertisement and never fetch it**, and the target is stored as a relation
+  to the apex rather than as a URL: a publisher chooses that string, and
+  following addresses from an unattended crawler is a request-forgery surface.
+  **Measured, not scored.**
+- **`C1` — card against runtime.** A new letter, not a `D8`: the letters group by
+  what is asked, and a comparison between a declaration and a runtime is not
+  discovery. Costs no request — it holds `D1`'s card against `D5`'s handshake.
+  `version` and `protocolVersion` can contradict; **`name` cannot**, because the
+  card's `name` and `serverInfo.name` have no shared declared meaning and a
+  conforming publisher would otherwise be in breach through no fault.
+  **Measured, not scored.**
+- **Document cacheability** on every `D1` document: `ETag`, `Last-Modified`,
+  `Cache-Control` class, content-type family. Shape only, never values.
+
+### The outcome taxonomy
+
+Every failed candidate check records *why*, from a closed vocabulary. Before
+0.3.0 every non-2xx was `not_found`, so a `403` was published as "this domain
+has nothing". `402` counts as a refusal: suspended hosting answers every path
+with it, and reading that as absence blames the brand for a billing dispute.
+
+Scoring reads the four statuses and never these labels, so none of this moves a
+band. That is what keeps run 3 and run 6 comparable across the bump.
+
+## Failure modes this project keeps repeating
+
+Four of these were found on the same day. They are the same mistake wearing
+different clothes, so check for them before adding anything.
+
+1. **A page printing the running code's version beside a frozen measurement.**
+   Hit on the homepage, then on `/census/data`. A release states the version it
+   was measured under or it states nothing.
+2. **A number computed over the watchlist and captioned as the census.** Hit on
+   the homepage headline, then again on the adoption chart, which showed 52.1%
+   publishing a card against a real 20.4%. `latestFullRun` and `adoptionSeries`
+   both now refuse anything that is not a full run, and both spellings of
+   `universe_filter` must be accepted.
+3. **A zero standing in for "not measured".** `C1` and `D7` do not exist in run
+   3. Writing them as `0` draws a rise out of nothing. The graph says "not in
+   this run"; the series omits the point entirely.
+4. **A test double more permissive than the real thing.** The fake KV accepted a
+   30-second `expirationTtl`; the real one rejects anything under 60, and
+   `/census/check` returned 1101 for an hour behind 145 green tests. `pnpm test`
+   now runs `typecheck` first, and the fake enforces the floor.
+
 ## Rules for working in this repo
 
 - **No check may be added, removed or changed without a corresponding
@@ -184,10 +238,10 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 | 1 | Core probes D1–D6, Q1, F1, F2 + pilot | **done** 2026-08-05 |
 | 2 | CLI `npx mcpcensus check` | **done**; not yet published to npm |
 | 3 | Cloudflare infra — D1, R2, KV, Queues, cron | **done** 2026-08-05 |
-| 4 | Full census over Universe R + D | **done** 2026-08-05 — 7,421 assessed, in D1 as run 3. Nightly cron live since 2026-08-06 |
+| 4 | Full census over Universe R + D | **done**. Run 3 (2026-08-05, methodology 0.2.0-draft) and run 6 (2026-08-07, methodology 0.4.0), 7,421 assessed each. Nightly cron live since 2026-08-06; Sunday is the full universe |
 | 5 | Shadow MCP classification | **partial** — see below |
 | 6 | Public site, live at www.radixia.ai/census/ | **done** 2026-08-05 |
-| 7 | Data release, Parquet, Zenodo | **release cut** 2026-08-05, downloadable at `/census/data`; Zenodo deposition still needs an account |
+| 7 | Data release, Parquet, Zenodo | releases `2026-08-05` and `2026-08-07` at `/census/data`, both immutable. **Zenodo waits for the launch release** — Marco's decision 2026-08-07 |
 | 8 | Conference mode | not started |
 
 Work strictly in order. Stop at each phase boundary, show Marco, wait for
