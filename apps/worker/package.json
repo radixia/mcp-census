@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy && ./scripts/smoke.sh",
+    "smoke": "./scripts/smoke.sh"
   },
   "dependencies": {
     "@mcp-census/core": "workspace:*"

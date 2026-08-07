@@ -37,8 +37,16 @@ function fakeEnv(options: { failOptOuts?: boolean } = {}): {
         return type === "json" ? JSON.parse(raw) : raw;
       },
       put: async (key: string, value: string, opts?: { expirationTtl?: number }) => {
+        // The real KV refuses anything under 60 seconds. A fake that accepts it
+        // is a fake that green-lights a deploy the platform will reject: a
+        // 30-second lock shipped past 145 passing tests and returned 1101 on
+        // every uncached check for an hour.
+        const ttl = opts?.expirationTtl;
+        if (ttl !== undefined && ttl < 60) {
+          throw new Error(`KV rejects expirationTtl ${ttl}; the minimum is 60`);
+        }
         kv.set(key, value);
-        puts.push({ key, ttl: opts?.expirationTtl });
+        puts.push({ key, ttl });
       },
     },
     DB: {
