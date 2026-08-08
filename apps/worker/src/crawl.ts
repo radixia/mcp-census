@@ -132,19 +132,31 @@ export async function scheduled(event: ScheduledController, env: Env): Promise<v
   // A no-op unless somebody seeded the KV key by hand. It sits here rather than
   // behind an endpoint so that asking for a backfill takes a deliberate act and
   // the public zone gains no write surface. See evidence-backfill.ts.
-  const backfill = await runEvidenceBackfill(env);
-  if (backfill !== null) {
-    console.log(
-      `[census] evidence backfill run ${backfill.run}: ` +
-        `${backfill.written} written, cursor ${backfill.cursor}` +
-        `${backfill.done ? ", run complete" : ", more to do"}, ${backfill.queued} queued`,
-    );
-    // Nothing else tonight. Expanding a bundle and driving a crawl in the same
-    // invocation is two long jobs sharing one budget.
-    // One long job a night. The crawl can wait a day; the pointers have been
-    // dangling since 2026-08-05 and one more night changes nothing.
-    return;
+  //
+  // Wrapped, because an unhandled throw here would abort `scheduled` and stop
+  // the census — silently, nightly, until somebody noticed a missing run. A
+  // maintenance job must never be able to take down the measurement it maintains.
+  let backfilled = false;
+  try {
+    const backfill = await runEvidenceBackfill(env);
+    if (backfill !== null) {
+      backfilled = true;
+      console.log(
+        `[census] evidence backfill run ${backfill.run}: ` +
+          `${backfill.written} written, cursor ${backfill.cursor}` +
+          `${backfill.done ? ", run complete" : ", more to do"}, ${backfill.queued} queued`,
+      );
+    }
+  } catch (error) {
+    // Loud, and then carry on to the crawl.
+    console.error(`[census] evidence backfill failed: ${String(error)}`);
   }
+
+  // Expanding a bundle and driving a crawl in one invocation is two long jobs
+  // sharing one budget, so a night that did a backfill does nothing else. A
+  // night whose backfill *failed* still crawls: the census does not skip a
+  // measurement because a maintenance job misbehaved.
+  if (backfilled) return;
 
   // Sunday is the full universe; every other day is the watchlist.
   const full = new Date(event.scheduledTime).getUTCDay() === 0;
