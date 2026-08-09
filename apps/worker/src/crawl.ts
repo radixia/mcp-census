@@ -129,6 +129,10 @@ export async function scheduled(event: ScheduledController, env: Env): Promise<v
   // Before anything else, so a stuck run cannot block deltas indefinitely.
   await sweepStalledRuns(env);
 
+  // Sunday is the full universe; every other day is the watchlist. Needed above
+  // because the backfill has to know whether tonight is the one that matters.
+  const full = new Date(event.scheduledTime).getUTCDay() === 0;
+
   // A no-op unless somebody seeded the KV key by hand. It sits here rather than
   // behind an endpoint so that asking for a backfill takes a deliberate act and
   // the public zone gains no write surface. See evidence-backfill.ts.
@@ -156,10 +160,15 @@ export async function scheduled(event: ScheduledController, env: Env): Promise<v
   // sharing one budget, so a night that did a backfill does nothing else. A
   // night whose backfill *failed* still crawls: the census does not skip a
   // measurement because a maintenance job misbehaved.
-  if (backfilled) return;
+  //
+  // Never on a Sunday, though. Sunday is the only full-population run of the
+  // week and it is the point the time series is made of; the watchlist runs six
+  // nights out of seven and losing one costs nothing. The first backfill this
+  // rule was written for took a Saturday and then a Sunday, so the week of
+  // 2026-08-09 has no full run at all — a maintenance job ate the measurement
+  // it existed to preserve.
+  if (backfilled && !full) return;
 
-  // Sunday is the full universe; every other day is the watchlist.
-  const full = new Date(event.scheduledTime).getUTCDay() === 0;
   const { domains, available } = await selectDomains(env, full, full ? MAX_FULL : MAX_WATCHLIST);
   if (domains.length === 0) return;
   if (domains.length < available) {
