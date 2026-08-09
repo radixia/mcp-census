@@ -190,7 +190,7 @@ band. That is what keeps run 3 and run 6 comparable across the bump.
 
 ## Failure modes this project keeps repeating
 
-Four of these were found on the same day. They are the same mistake wearing
+Five of these are real and dated. They are the same mistake wearing
 different clothes, so check for them before adding anything.
 
 1. **A page printing the running code's version beside a frozen measurement.**
@@ -204,7 +204,12 @@ different clothes, so check for them before adding anything.
 3. **A zero standing in for "not measured".** `C1` and `D7` do not exist in run
    3. Writing them as `0` draws a rise out of nothing. The graph says "not in
    this run"; the series omits the point entirely.
-4. **A test double more permissive than the real thing.** The fake KV accepted a
+4. **A maintenance job spending the budget of the thing it maintains.** The
+   evidence backfill took Saturday and then Sunday, and Sunday is the only
+   full-population run of the week — the point the time series is made of. "The
+   crawl can wait a night" was true of the watchlist and false of the one night
+   that matters. Nothing may skip a full-universe night.
+5. **A test double more permissive than the real thing.** The fake KV accepted a
    30-second `expirationTtl`; the real one rejects anything under 60, and
    `/census/check` returned 1101 for an hour behind 145 green tests. `pnpm test`
    now runs `typecheck` first, and the fake enforces the floor.
