@@ -33,8 +33,8 @@ importers:
         specifier: 'catalog:'
         version: 2.5.7
       '@radixia/brand':
-        specifier: github:radixia/brand#v0.2.0
-        version: https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb
+        specifier: github:radixia/brand#v1.1.0
+        version: https://codeload.github.com/radixia/brand/tar.gz/bc71e979999a334a94aa65383f47e823c0a4f4a6
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -551,9 +551,9 @@ packages:
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
 
-  '@radixia/brand@https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb':
-    resolution: {gitHosted: true, integrity: sha512-UUdiDH+xd5DGOBzV80/bXLhGWATOdhrcv2pVl7HT7x9oRLs3KfEAYWzglKb16sODnY7B6FdjBXJnBsO4Ekp0sA==, tarball: https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb}
-    version: 0.2.0
+  '@radixia/brand@https://codeload.github.com/radixia/brand/tar.gz/bc71e979999a334a94aa65383f47e823c0a4f4a6':
+    resolution: {gitHosted: true, integrity: sha512-Dtx8oxN583MbWPG4qzAPzaHFrdPxf7VXEecV+vUfsLOWauq8X0qKNfa9lW4jUbic1BgxUHehQ4mYGlUMqyDsoQ==, tarball: https://codeload.github.com/radixia/brand/tar.gz/bc71e979999a334a94aa65383f47e823c0a4f4a6}
+    version: 1.1.0
     engines: {node: '>=20'}
 
   '@rolldown/binding-android-arm64@1.2.2':
@@ -1456,7 +1456,7 @@ snapshots:
 
   '@poppinss/exception@1.2.3': {}
 
-  '@radixia/brand@https://codeload.github.com/radixia/brand/tar.gz/6f1414467d392eb79851289bec6b1ab015c3b9eb': {}
+  '@radixia/brand@https://codeload.github.com/radixia/brand/tar.gz/bc71e979999a334a94aa65383f47e823c0a4f4a6': {}
 
   '@rolldown/binding-android-arm64@1.2.2':
     optional: true
