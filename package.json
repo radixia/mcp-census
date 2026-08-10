@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@radixia/brand": "github:radixia/brand#v1.0.0",
+    "@radixia/brand": "github:radixia/brand#v1.1.0",
     "typescript": "catalog:"
   }
 }
