@@ -29,8 +29,9 @@ const OUT = "../packages/core/src/theme/radixia.ts";
 
 /**
  * Brand token -> census token. The census needs a smaller vocabulary than the
- * website, and it deliberately renames the accent: structural CSS that says
- * `--accent` can be re-themed by anyone, whereas `--magenta` only makes sense for
+ * website, and the accent names now agree: brand v1.0.0 renamed
+ * `--magenta*` to `--accent*`, which is what this file had been translating to
+ * all along, so the mapping is an identity. The rename happened because
  * one brand.
  */
 const MAP: ReadonlyArray<readonly [brand: string, census: string]> = [
@@ -44,10 +45,10 @@ const MAP: ReadonlyArray<readonly [brand: string, census: string]> = [
   ["ink-2", "ink-2"],
   ["ink-3", "ink-3"],
   ["line", "line"],
-  ["magenta", "accent"],
-  ["magenta-deep", "accent-deep"],
-  ["magenta-btn", "accent-btn"],
-  ["magenta-btn-hover", "accent-btn-hover"],
+  ["accent", "accent"],
+  ["accent-deep", "accent-deep"],
+  ["accent-btn", "accent-btn"],
+  ["accent-btn-hover", "accent-btn-hover"],
   ["radius", "radius"],
   ["radius-btn", "radius-btn"],
 ];
