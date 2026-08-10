@@ -170,7 +170,13 @@ async function main(): Promise<void> {
   statements.push(
     `UPDATE runs SET domains_completed = (SELECT COUNT(*) FROM scans WHERE run_id = ${runId})` +
       ` WHERE id = ${runId};`,
-    `UPDATE runs SET finished_at = ${quote(now)}, status = 'complete',` +
+    // From the data, not the clock. Stamping the import time made the site say
+    // "Last complete run 10 August" for a crawl that ran on the 9th: a
+    // measurement is dated when it was measured. Falls back to now for a run
+    // whose rows carry no `observedAt` — runs 3 and 6, which predate it.
+    `UPDATE runs SET finished_at = COALESCE(` +
+      ` (SELECT MAX(started_at) FROM scans WHERE run_id = ${runId}), ${quote(now)}` +
+      `), status = 'complete',` +
       ` usable_for_delta = CASE WHEN domains_completed >= domains_planned THEN 1 ELSE 0 END` +
       ` WHERE id = ${runId};`,
   );

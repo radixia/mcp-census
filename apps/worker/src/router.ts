@@ -371,7 +371,7 @@ const REPO = "https://github.com/radixia/mcp-census";
  * reader can tell a truncated download from a complete one.
  */
 const LATEST_RELEASE = {
-  date: "2026-08-07",
+  date: "2026-08-09",
   domains: 7422,
   assessed: 7421,
   // Pinned, not read from the running code. `METHODOLOGY_VERSION` here meant the
@@ -383,11 +383,11 @@ const LATEST_RELEASE = {
   candidates: "2026-08-07",
   files: [
     { name: "summary.json", what: "The headline numbers and per-check pass rates", size: "1.8 KB" },
-    { name: "census.csv", what: "One row per domain: score, band, every check", size: "830 KB" },
+    { name: "census.csv", what: "One row per domain: score, band, every check", size: "831 KB" },
     {
       name: "census.jsonl.gz",
       what: "Per-domain rows with full evidence, one JSON object per line",
-      size: "2.0 MB",
+      size: "2.1 MB",
     },
     { name: "universe.csv", what: "The frozen population, with provenance", size: "437 KB" },
     { name: "to-parquet.sql", what: "DuckDB script: any of the above to Parquet", size: "621 B" },
@@ -401,6 +401,11 @@ const LATEST_RELEASE = {
  * artifact that changes is not one.
  */
 const EARLIER_RELEASES = [
+  {
+    date: "2026-08-07",
+    methodology: "0.4.0",
+    what: "Eleven checks. The first with D7, C1 and cacheability, and the last with one shared timestamp for every row.",
+  },
   {
     date: "2026-08-05",
     methodology: "0.2.0",
