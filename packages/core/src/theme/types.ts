@@ -14,9 +14,16 @@
 
 /** Tokens the structural stylesheet requires. Every theme must set all of them. */
 export interface ThemeTokens {
-  readonly "font-body": string;
-  readonly "font-display": string;
+  readonly "font-sans": string;
   readonly "font-mono": string;
+  /**
+   * Tracking for h1-h3. Editorial/product registers are told apart by weight
+   * and tracking now that there is one family — see the structural stylesheet.
+   */
+  readonly "track-display": string;
+  readonly "track-nav": string;
+  readonly "track-label": string;
+  readonly "track-meta": string;
   readonly paper: string;
   readonly "paper-2": string;
   readonly card: string;

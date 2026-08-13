@@ -21,10 +21,15 @@ export const NEUTRAL_THEME: CensusTheme = {
   id: "neutral",
   honourDataTheme: true,
   tokens: {
-    // No @font-face, so these must be stacks that exist everywhere.
-    "font-body": "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    "font-display": "Georgia, Cambria, Times New Roman, serif",
+    // No @font-face, so this must be a stack that exists everywhere. One
+    // family for everything, matching the structural stylesheet's contract —
+    // see ThemeTokens.
+    "font-sans": "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     "font-mono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    "track-display": "-0.01em",
+    "track-nav": "0.01em",
+    "track-label": "0.02em",
+    "track-meta": "0.06em",
 
     paper: "#fcfcfd",
     "paper-2": "#f2f4f7",
