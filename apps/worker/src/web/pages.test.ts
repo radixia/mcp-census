@@ -288,7 +288,7 @@ describe("stylesheet", () => {
   it("defaults to neutral, never to somebody else's brand", () => {
     // A fork that deploys this must not ship Radixia's identity by accident.
     expect(neutral).not.toContain("#d6117e");
-    expect(neutral).not.toContain("Fraunces");
+    expect(neutral).not.toContain("Inter");
     expect(neutral).not.toContain("@font-face");
     expect(page({ title: "x", description: "d", path: "/", body: "" })).not.toContain("Radixia");
   });

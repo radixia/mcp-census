@@ -33,11 +33,19 @@ const OUT = "../packages/core/src/theme/radixia.ts";
  * `--magenta*` to `--accent*`, which is what this file had been translating to
  * all along, so the mapping is an identity. The rename happened because
  * one brand.
+ *
+ * `font-display`/`font-body` collapsed to `font-sans` in brand v2.0.0 (Inter
+ * is the only corporate/UI typeface now; see that release's tokens.css note).
+ * The four `track-*` tokens are new in the same release — they carry the
+ * editorial/product distinction that having two families used to carry.
  */
 const MAP: ReadonlyArray<readonly [brand: string, census: string]> = [
-  ["font-body", "font-body"],
-  ["font-display", "font-display"],
+  ["font-sans", "font-sans"],
   ["font-mono", "font-mono"],
+  ["track-display", "track-display"],
+  ["track-nav", "track-nav"],
+  ["track-label", "track-label"],
+  ["track-meta", "track-meta"],
   ["paper", "paper"],
   ["paper-2", "paper-2"],
   ["card", "card"],

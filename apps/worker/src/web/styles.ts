@@ -21,12 +21,13 @@ import { type CensusTheme, renderThemeCss } from "@mcp-census/core";
 const STRUCTURE_CSS = `
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);
   font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .wrap{max-width:var(--w-max);margin:0 auto;padding:0 20px}
 a{color:var(--accent-deep);text-decoration:none}
 a:hover{color:var(--accent);text-decoration:underline}
-h1,h2,h3{font-family:var(--font-display);font-weight:600;line-height:1.15;margin:0 0 .5em}
+h1,h2,h3{font-family:var(--font-sans);font-optical-sizing:auto;font-weight:600;
+  letter-spacing:var(--track-display);line-height:1.15;margin:0 0 .5em}
 h1{font-size:clamp(2rem,5vw,3.1rem)}
 h2{font-size:clamp(1.4rem,3vw,2rem);margin-top:2.2em}
 h3{font-size:1.15rem;margin-top:1.6em}
@@ -39,7 +40,7 @@ code,.mono{font-family:var(--font-mono);font-size:.9em}
 
 header.top{border-bottom:1px solid var(--line);background:var(--paper-2)}
 header.top .wrap{display:flex;gap:20px;align-items:baseline;padding:14px 20px;flex-wrap:wrap}
-header.top .brand{font-family:var(--font-display);font-weight:600;color:var(--ink)}
+header.top .brand{font-family:var(--font-sans);font-weight:600;color:var(--ink)}
 /* Back up to the parent site, on every page including 404s.
    Was --ink-3 at .88rem on the theory that an exit should be quiet. That read as
    absent — the first feedback on it was that it wasn't there — so it is now the
@@ -65,13 +66,13 @@ main{padding:44px 0 72px}
 /* the headline number */
 .headline{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   padding:32px;margin:28px 0}
-.headline .big{font-family:var(--font-display);font-size:clamp(3rem,11vw,6.5rem);
+.headline .big{font-family:var(--font-sans);font-size:clamp(3rem,11vw,6.5rem);
   line-height:1;color:var(--accent);font-weight:600;display:block}
 .headline .said{font-size:1.1rem;color:var(--ink-2);max-width:56ch;margin-top:.4em}
 
 .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:22px 0}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
-.stat .n{font-family:var(--font-display);font-size:1.9rem;line-height:1;display:block}
+.stat .n{font-family:var(--font-sans);font-size:1.9rem;line-height:1;display:block}
 .stat .k{font-size:.82rem;color:var(--ink-3);margin-top:.35em;display:block}
 
 table{width:100%;border-collapse:collapse;font-size:.94rem;margin:18px 0}
