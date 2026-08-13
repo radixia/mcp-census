@@ -26,7 +26,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sa
 .wrap{max-width:var(--w-max);margin:0 auto;padding:0 20px}
 a{color:var(--accent-deep);text-decoration:none}
 a:hover{color:var(--accent);text-decoration:underline}
-h1,h2,h3{font-family:var(--font-sans);font-optical-sizing:auto;font-weight:400;
+h1,h2,h3{font-family:var(--font-sans);font-optical-sizing:auto;font-weight:600;
   letter-spacing:var(--track-display);line-height:1.15;margin:0 0 .5em}
 h1{font-size:clamp(2rem,5vw,3.1rem)}
 h2{font-size:clamp(1.4rem,3vw,2rem);margin-top:2.2em}
