@@ -122,6 +122,19 @@ async function sweepStalledRuns(env: Env): Promise<void> {
         `Not usable as a delta baseline.`,
     );
     await closeRun(env, run.id);
+
+    // Aggregates, always. This used to close the run and walk away, so a run the
+    // watchdog rescued got `status = 'complete'` and no aggregates — invisible to
+    // the adoption series, which reads run_aggregates. Run 13, the Sunday
+    // full-population run of 2026-08-16, finished 7,420 of 7,422 and vanished
+    // from the series that way: the one run of the week that matters, dropped
+    // for being two domains short.
+    //
+    // The aggregate carries its own denominator, so a slightly short run is a
+    // legible data point rather than a silent hole. Deltas stay out: those need a
+    // trustworthy baseline, and `closeRun` has already marked this one unusable.
+    const aggregates = await computeAggregates(env, run.id);
+    console.warn(`[census] run ${run.id} swept: ${aggregates} aggregates written`);
   }
 }
 
