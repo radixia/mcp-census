@@ -54,7 +54,8 @@ interface Attempt {
     | "no_reply"
     | "skipped_by_robots"
     | "redirected_off_apex"
-    | "transport_error";
+    | "transport_error"
+    | "budget_exhausted";
   readonly jsonRpcErrorCode?: number;
   readonly jsonRpcErrorMessage?: string;
 }
@@ -118,6 +119,9 @@ export async function checkHandshake(
     }
     if (outcome.outcome === "redirect_off_apex") {
       return { attempt: { ...base, outcome: "redirected_off_apex" } };
+    }
+    if (outcome.outcome === "budget_exhausted") {
+      return { attempt: { ...base, outcome: "budget_exhausted" } };
     }
     if (outcome.outcome === "transport_error") {
       return { attempt: { ...base, outcome: "transport_error" } };

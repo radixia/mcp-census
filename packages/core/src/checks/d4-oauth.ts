@@ -108,6 +108,10 @@ export async function checkOauthProtectedResource(
       probes.push({ ...base, result: "skipped_by_robots" });
       continue;
     }
+    if (outcome.outcome === "budget_exhausted") {
+      probes.push({ ...base, result: "budget_exhausted" });
+      continue;
+    }
     if (outcome.outcome === "transport_error") {
       probes.push({ ...base, result: "transport_error" });
       continue;
@@ -166,6 +170,14 @@ export async function checkOauthProtectedResource(
 
   if (probes.length > 0 && probes.every((p) => p.result === "skipped_by_robots")) {
     return skip("D4", "skipped_by_robots", latencyMs);
+  }
+
+  // Out of time is not a finding. Returned as an error so `scoreDomain` refuses
+  // to score the domain at all, rather than publishing a zero we did not earn.
+  if (probes.length > 0 && probes.every((p) => p.result === "budget_exhausted")) {
+    return errored("D4", "per-domain budget exhausted", latencyMs, {
+      candidates: probes,
+    });
   }
 
   if (probes.length > 0 && probes.every((p) => p.result === "transport_error")) {

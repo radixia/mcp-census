@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { GuardedHttpClient } from "../http/guarded-client.js";
 import type { ResolveTxt } from "../http/types.js";
+import { POLITENESS } from "../politeness.js";
 import { probeDomain } from "../probe.js";
 import { scoreDomain } from "../scoring.js";
 import { type FakeRoutes, fakeDeps, fakeHttp, TEST_IDENTITY } from "../testing/fake-http.js";
@@ -14,7 +15,7 @@ import { checkRootAdvertisement, relationOf } from "./d7-root-advertisement.js";
 import { checkTextFallbacks } from "./f1-text-fallbacks.js";
 import { checkCrawlerPosture } from "./f2-crawler-posture.js";
 import { cacheabilityOf, classifyStatus, rollUpOutcome } from "./outcome.js";
-import type { CheckResult } from "./types.js";
+import { type CheckResult, errored } from "./types.js";
 
 const APEX = "example.com";
 const NO_TXT: ResolveTxt = async () => {
@@ -297,6 +298,57 @@ describe("evidence redaction", () => {
     // else's verification tokens in a CC-BY dataset.
     expect(JSON.stringify(ev)).not.toContain("SECRET-TOKEN");
     expect(JSON.stringify(ev)).not.toContain("spf1");
+  });
+});
+
+describe("per-domain budget", () => {
+  it("refuses to score a domain it ran out of time on", async () => {
+    // The property that matters. Run 13 lost two domains to the tail of the
+    // duration distribution — 1,145s at the maximum, longer than a queue message
+    // lives — and they vanished with no row at all, leaving the run two short and
+    // dropping the whole Sunday from the adoption series. A truncated domain must
+    // produce a row, and that row must be unassessed rather than a zero.
+    const h = harness({});
+    // The deadline is fixed when the client is built, so build it first and then
+    // let time pass — which is also the only order that happens in production.
+    let clock = 0;
+    const client = new GuardedHttpClient(
+      { fetch: h.http, sleep: async () => {}, now: () => clock },
+      { apex: APEX, identity: TEST_IDENTITY, optOuts: new Set<string>() },
+    );
+    clock = POLITENESS.perDomainBudgetMs + 1;
+
+    const result = await checkServerCard({ client, now: () => clock }, { apex: APEX });
+
+    expect(result.status).toBe("error");
+    // No escape hatch: the probes must exist and must all say why. Written as
+    // `probes === undefined || ...` the first time, which passes whether or not
+    // the guard is there.
+    const probes = (result.evidence as { candidates: Array<{ result: string }> }).candidates;
+    expect(probes.length).toBeGreaterThan(0);
+    expect(probes.map((p) => p.result)).toEqual(probes.map(() => "budget_exhausted"));
+
+    // And the score refuses rather than publishing a zero.
+    const score = scoreDomain([result, errored("D3", "x", 0), errored("D4", "x", 0)]);
+    expect(score.assessed).toBe(false);
+    expect(score.reason).toBe("unreachable");
+  });
+
+  it("costs nothing once the budget is gone", async () => {
+    const h = harness({});
+    // Built first, then time passes. The deadline is fixed at construction, so a
+    // client built after the budget would carry a deadline in the future — which
+    // is what made this test fail the first time, not the code.
+    const clock = { t: 0 };
+    const client = new GuardedHttpClient(
+      { fetch: h.http, sleep: async () => {}, now: () => clock.t },
+      { apex: APEX, identity: TEST_IDENTITY, optOuts: new Set<string>() },
+    );
+    clock.t = POLITENESS.perDomainBudgetMs + 1;
+    const before = client.requestCount;
+    await client.fetchPath("/robots.txt");
+    // No network at all: the refusal happens before the guards and before fetch.
+    expect(client.requestCount).toBe(before);
   });
 });
 

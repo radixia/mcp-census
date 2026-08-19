@@ -27,6 +27,8 @@ export type CandidateOutcome =
   | "not_a_document"
   | "skipped_by_robots"
   | "transport_error"
+  /** We ran out of the domain's wall-clock budget before asking. Never absence. */
+  | "budget_exhausted"
   | "redirected_off_apex";
 
 /**
@@ -59,7 +61,7 @@ export type CheckOutcome =
   | "mixed_negative";
 
 export function rollUpOutcome(probes: readonly CandidateOutcome[]): CheckOutcome {
-  if (probes.some((p) => p === "blocked" || p === "transport_error")) {
+  if (probes.some((p) => p === "blocked" || p === "transport_error" || p === "budget_exhausted")) {
     return "inconclusive_blocked";
   }
   if (probes.length > 0 && probes.every((p) => p === "absent")) {

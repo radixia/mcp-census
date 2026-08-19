@@ -54,6 +54,25 @@ export const POLITENESS = {
    * has finished answering" from "the server is slow".
    */
   bodyIdleTimeoutMs: 2_000,
+  /**
+   * Wall clock a single domain may consume before we stop and say so.
+   *
+   * Measured rather than guessed. Across the 7,422 domains of run 8 the
+   * per-domain wall clock was 19s at the median, 40s at p90, 275s at p99, 378s
+   * at p99.9 and **1,145s at the maximum** — nineteen minutes for one domain,
+   * legitimately, because 20-odd requests at one per second each get up to
+   * `totalTimeoutMs` plus retries and backoff.
+   *
+   * That tail is longer than a queue message can live. The local runner has no
+   * such limit, which is why runs 3, 6 and 8 completed all 7,422 while run 13 —
+   * the first full run driven through the Worker queue — came up two domains
+   * short and was dropped from the adoption series for it.
+   *
+   * 300s sits above p99 and cuts 27 of 7,422 (0.36%). Those are not recorded as
+   * absent: they are `budget_exhausted` and excluded from every denominator,
+   * because "we ran out of time" is a fact about us.
+   */
+  perDomainBudgetMs: 300_000,
   maxRetries: 2,
   retryOnStatus: [429, 500, 502, 503, 504],
   /** One hop, and it must stay inside the target apex. */

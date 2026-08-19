@@ -150,6 +150,9 @@ export async function checkRootAdvertisement(
   if (outcome.outcome === "skipped_by_robots") {
     return skip("D7", "skipped_by_robots", latencyMs());
   }
+  if (outcome.outcome === "budget_exhausted") {
+    return errored("D7", "per-domain budget exhausted", latencyMs());
+  }
   if (outcome.outcome === "transport_error") {
     return errored("D7", outcome.error, latencyMs());
   }

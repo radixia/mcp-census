@@ -74,11 +74,24 @@ export function skip(id: CheckId, reason: SkipReason, latencyMs = 0): CheckResul
   return { id, status: "skip", evidence: { skipReason: reason }, latencyMs };
 }
 
-export function errored(id: CheckId, error: unknown, latencyMs: number): CheckResult {
+export function errored(
+  id: CheckId,
+  error: unknown,
+  latencyMs: number,
+  /**
+   * Extra evidence to keep alongside the message.
+   *
+   * An error that says only "per-domain budget exhausted" tells a reader nothing
+   * about what was skipped for it. Passing the probes through means the row shows
+   * every candidate marked `budget_exhausted`, which is the difference between a
+   * finding and a shrug.
+   */
+  evidence: Readonly<Record<string, unknown>> = {},
+): CheckResult {
   return {
     id,
     status: "error",
-    evidence: { error: error instanceof Error ? error.message : String(error) },
+    evidence: { ...evidence, error: error instanceof Error ? error.message : String(error) },
     latencyMs,
   };
 }

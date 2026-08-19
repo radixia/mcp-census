@@ -23,6 +23,7 @@ interface FallbackProbe {
     | "empty"
     | "skipped_by_robots"
     | "transport_error"
+    | "budget_exhausted"
     | "redirected_off_apex";
   readonly status?: number;
   readonly bytes?: number;
@@ -41,6 +42,10 @@ export async function checkTextFallbacks(
 
     if (outcome.outcome === "skipped_by_robots") {
       probes.push({ path, result: "skipped_by_robots" });
+      continue;
+    }
+    if (outcome.outcome === "budget_exhausted") {
+      probes.push({ path, result: "budget_exhausted" });
       continue;
     }
     if (outcome.outcome === "transport_error") {

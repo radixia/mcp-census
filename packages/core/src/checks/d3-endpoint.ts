@@ -34,6 +34,7 @@ interface EndpointProbe {
     | "other_status"
     | "skipped_by_robots"
     | "transport_error"
+    | "budget_exhausted"
     | "redirected_off_apex";
   readonly status?: number;
   readonly jsonRpcErrorCode?: number;
@@ -70,6 +71,10 @@ export async function checkConventionalEndpoint(
 
     if (outcome.outcome === "skipped_by_robots") {
       probes.push({ ...base, result: "skipped_by_robots" });
+      continue;
+    }
+    if (outcome.outcome === "budget_exhausted") {
+      probes.push({ ...base, result: "budget_exhausted" });
       continue;
     }
     if (outcome.outcome === "transport_error") {

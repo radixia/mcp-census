@@ -386,6 +386,27 @@ The things that weaken our own findings. This section is not a formality.
     the AI Catalog". The same caution applies to every candidate we probe, but it
     bites hardest here because this is the mechanism with a future.
 
+21. **A domain gets 300 seconds, and 0.36% of them need more.** Each request is
+    bounded at 5s connect and 10s total, but until 2026-08-19 nothing bounded the
+    domain. Measured across run 8, per-domain wall clock was 19s at the median,
+    40s at p90, 275s at p99 and **1,145s at the maximum** — nineteen minutes for
+    one domain, legitimately, since twenty-odd requests at one per second can each
+    take the full timeout plus retries.
+
+    That tail is longer than a queue message lives. The local runner has no such
+    limit, which is why the first three full runs completed all 7,422 domains
+    while run 13 — the first driven through the Worker queue — came up two short
+    and was dropped from the adoption series for it.
+
+    A domain now stops at 300s, above p99, cutting 27 of 7,422. Those are **not
+    recorded as absent**: every remaining candidate is `budget_exhausted`, the
+    check returns an error rather than a failure, and the domain is unassessed and
+    excluded from every denominator. "We ran out of time" is a fact about us.
+
+    The number is a compromise and should be revisited. Raising it recovers a few
+    dozen genuinely slow domains; lowering it costs coverage. What must not happen
+    again is a domain silently producing no row at all.
+
 ## Open questions
 
 These are unresolved as of 2026-08-05 and are recorded here rather than hidden:
@@ -424,3 +445,4 @@ reader looking for a `0.3.0` dataset will not find one, and should read the
 | `0.4.0` | 2026-08-07 | Added `D7`, which reads the catalog link relations the AI Catalog specification consults *before* the well-known path. It is measured and deliberately **not scored**: an advertisement is not a document, and we chose not to open it. Costs one `GET` of `/` per domain; `/` was already on the candidate list, the change is asking for it on the apex and reading the head. `D2` now publishes only `v=mcp*` TXT records and a count of the rest — the first census shipped 122 domains' unrelated site-verification tokens in a CC-BY dataset, which was collection we could not justify. Candidate set `2026-08-07`. |
 | `0.4.0` | 2026-08-07 | Added `C1`, a new check family for coherence between a declaration and a runtime. It costs no request: `D1` now keeps the identity the card declares, and `C1` holds it against the `serverInfo` `D5` already recorded. Prompted by experimental-ext-server-card#23, which on 2026-06-08 made it normative that a card MUST NOT contradict its server, and which as far as we can find nobody has measured. `name` is deliberately excluded from contradiction: the first domains measured showed cards carrying a display name against runtimes reporting a software package, which no specification says must match, so a conforming publisher can trip the MUST through no fault. That ambiguity is the finding, and it is reported as divergence rather than as a violation. |
 | `0.4.0` | 2026-08-07 | Editorial, same day: the on-demand check at `/census/check` runs `D7` with `HEAD`, reading the response header and downloading no page. It is the only probe here a stranger can aim at a domain they do not own, and a home page is the heaviest thing most sites serve; in the first run 59 of 93 advertisements were in the header, so the quick check sees about two thirds and says so on the result. Recorded in the evidence as `headerOnly`. |
+| `0.5.0` | 2026-08-19 | A domain may consume 300s of wall clock, measured against run 8's distribution rather than guessed. Past it every candidate records `budget_exhausted`, the check errors rather than fails, and the domain is unassessed — never absent. Fixes the failure that dropped the Sunday full run of 2026-08-16 from the adoption series: two domains in the tail of the duration distribution produced no row at all, leaving the run short of plan, closed by the watchdog, and without aggregates. The watchdog now writes aggregates too. Limitation 21. |

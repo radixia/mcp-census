@@ -51,7 +51,12 @@ export type ProbeOutcome =
    * record, not something that aborts the probe.
    */
   | { readonly outcome: "redirect_off_apex"; readonly to: string }
-  | { readonly outcome: "transport_error"; readonly error: string };
+  | { readonly outcome: "transport_error"; readonly error: string }
+  /**
+   * This domain's wall-clock budget ran out. A fact about our crawl, never about
+   * the domain, so it must not reach a denominator as an absence.
+   */
+  | { readonly outcome: "budget_exhausted" };
 
 export interface GuardedClientDeps {
   readonly fetch: HttpFetch;
@@ -86,10 +91,14 @@ export class GuardedHttpClient {
   #endpointHost: string | undefined;
   #discoveryEstablished = false;
 
+  /** When this domain's wall-clock budget runs out. Set on construction. */
+  readonly #deadline: number;
+
   constructor(
     private readonly deps: GuardedClientDeps,
     private readonly context: GuardedClientContext,
   ) {
+    this.#deadline = deps.now() + POLITENESS.perDomainBudgetMs;
     // An opted-out apex must cost zero requests, so this is checked at
     // construction rather than per call.
     assertNotOptedOut(context.apex, context.optOuts);
@@ -171,6 +180,11 @@ export class GuardedHttpClient {
       apex: this.context.apex,
       ...(this.#endpointPath === undefined ? {} : { endpointPath: this.#endpointPath }),
     };
+
+    // Before the guards and before the network: once the budget is gone every
+    // remaining check should fail fast and identically, so the row still gets
+    // written and says why.
+    if (this.deps.now() >= this.#deadline) return { outcome: "budget_exhausted" };
 
     assertPathAllowed(path, pathContext);
     assertHttpMethodAllowed(method, { discoveryEstablished: this.#discoveryEstablished });

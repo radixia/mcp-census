@@ -178,6 +178,7 @@ const DETAIL_WORDS: Record<string, string> = {
   protocol_version_contradicts: "the card does not list the revision the server negotiated",
   version_and_protocol_contradict: "the card disagrees on both version and protocol revision",
   no_advertisement: "the home page answered, and advertises no catalog",
+  budget_exhausted: "we ran out of the time we allow ourselves per domain",
   absent: "the home page was not there",
   blocked: "the home page refused us, so this is inconclusive",
   unexpected_status: "the home page answered with something we did not expect",

@@ -122,6 +122,10 @@ export async function checkServerCard(
       probes.push({ ...base, result: "skipped_by_robots" });
       continue;
     }
+    if (outcome.outcome === "budget_exhausted") {
+      probes.push({ ...base, result: "budget_exhausted" });
+      continue;
+    }
     if (outcome.outcome === "transport_error") {
       probes.push({ ...base, result: "transport_error", error: outcome.error });
       continue;
@@ -195,6 +199,14 @@ export async function checkServerCard(
 
   // Everything we tried failed at the transport. We did not learn that the
   // domain has no card, only that we could not reach it.
+  // Out of time is not a finding. Returned as an error so `scoreDomain` refuses
+  // to score the domain at all, rather than publishing a zero we did not earn.
+  if (probes.length > 0 && probes.every((p) => p.result === "budget_exhausted")) {
+    return errored("D1", "per-domain budget exhausted", latencyMs, {
+      candidates: probes,
+    });
+  }
+
   if (probes.length > 0 && probes.every((p) => p.result === "transport_error")) {
     return errored("D1", "all candidate probes failed at the transport", latencyMs);
   }
