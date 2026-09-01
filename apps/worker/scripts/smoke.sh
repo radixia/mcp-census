@@ -15,6 +15,7 @@
 
 set -uo pipefail
 BASE="${1:-https://www.radixia.ai/census}"
+ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 FAILED=0
 
 check() {
@@ -71,6 +72,27 @@ case "$UNKNOWN" in
 esac
 
 check "404 is a 404"   "$BASE/no-such-page"           404
+
+# The one that would have caught twelve days of shipping nothing. The Worker
+# bundles @mcp-census/core from dist/, and `typecheck --noEmit` does not build
+# it, so a deploy after a source change can quietly ship the previous build. On
+# 2026-09-01 production was still serving methodology 0.4.0 while the source had
+# said 0.5.0 since 2026-08-19 — the per-domain budget among the code that never
+# went live. Compare what is running against what is in the tree.
+SRC_VERSION="$(grep -o 'METHODOLOGY_VERSION = "[^"]*"' "$ROOT_DIR/packages/core/src/version.ts" | cut -d'"' -f2)"
+LIVE_VERSION="$(curl -sS --max-time 20 "$BASE/health" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("methodologyVersion",""))' 2>/dev/null)"
+if [ -z "$SRC_VERSION" ] || [ -z "$LIVE_VERSION" ]; then
+  # A check that passes because it could not read something is not a check. The
+  # first version of this reported "ok" against a wrong path.
+  printf '  FAIL  %-34s could not read source (%s) or live (%s) version\n' \
+    "deployed version" "${SRC_VERSION:-none}" "${LIVE_VERSION:-none}"
+  FAILED=1
+elif [ "$SRC_VERSION" != "$LIVE_VERSION" ]; then
+  printf '  FAIL  %-34s live %s, source %s — stale bundle\n' "deployed version" "$LIVE_VERSION" "$SRC_VERSION"
+  FAILED=1
+else
+  printf '  ok    %-34s %s\n' "deployed version" "$LIVE_VERSION"
+fi
 
 if [ "$FAILED" -ne 0 ]; then
   echo "smoke: FAILED — roll back or fix before walking away"
