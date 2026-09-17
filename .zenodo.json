@@ -1,0 +1,34 @@
+{
+  "title": "MCP Census: can an agent find your MCP server?",
+  "upload_type": "dataset",
+  "description": "<p>Per-domain measurements of whether an AI agent could <strong>discover and connect to</strong> an MCP server for each organisation in a frozen, reproducible population, starting from nothing but the domain name.</p><p>The population is 7,422 organisations the official MCP Registry proves run a server. That choice is deliberate and stated: these have already done the hard part, so the figures here are an upper bound on the wider web rather than a sample of laggards.</p><p>Each deposit contains the per-domain rows with full evidence, the frozen input universe with its provenance and download date, a flattened CSV, a DuckDB script for Parquet, and a summary whose every aggregate declares its own denominator. Earlier dated releases are kept unchanged alongside, because a citable artifact that changes is not one.</p><p><strong>What the data does not say.</strong> A negative is not proof of absence: the probe covers a published, versioned candidate list, and a server elsewhere is a server it missed. A refusal (401, 402, 403, 429, 5xx) is recorded as inconclusive rather than as absence, because it is a fact about the crawl. Missing OAuth protected-resource metadata is never non-compliance, since authorization is optional in MCP. Conformance is for the specification's authors to determine; this measures, it does not judge.</p><p><strong>Conflict of interest.</strong> The authors' own domain, radixia.ai, is included in the measured population rather than excluded, and this is disclosed at the top of the methodology.</p><p>Code is Apache-2.0 and lives in the same repository. The data is CC-BY-4.0, which is the licence of this record.</p>",
+  "creators": [
+    { "name": "D'Angelo, Marco", "affiliation": "Radixia S.r.l." }
+  ],
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "keywords": [
+    "Model Context Protocol",
+    "MCP",
+    "AI agents",
+    "agent discovery",
+    "web measurement",
+    "service discovery",
+    "open data",
+    "reproducible research"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://www.radixia.ai/census/methodology",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-technicalnote",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/radixia/mcp-census",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "language": "eng"
+}
