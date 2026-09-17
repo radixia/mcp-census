@@ -7,7 +7,6 @@
  */
 
 import {
-  CANDIDATES_VERSION,
   CENSUS_BASE_PATH,
   censusUrl,
   METHODOLOGY_VERSION,
