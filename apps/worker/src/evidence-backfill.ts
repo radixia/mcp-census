@@ -208,3 +208,69 @@ export async function runEvidenceBackfill(env: Env): Promise<BackfillResult | nu
 
   return { run, written, cursor: next, done, queued: remaining.length };
 }
+
+/** Key that asks for a run to be bundled, seeded by hand like the backfill. */
+const BUNDLE_KEY = "evidence-bundle";
+
+/**
+ * The inverse of the backfill: gather a run's per-domain evidence into one
+ * gzipped object.
+ *
+ * Runs driven by the Worker write `evidence/<apex>/<run>.json` and nothing else,
+ * so there has never been a way to cut a release from one without fetching
+ * thousands of objects from a laptop — which is how a morning was lost in
+ * August, at 1.1 objects a second and a failure count that could not be trusted.
+ * Everything here is inside Cloudflare: a binding read per domain, a binding
+ * write for the result.
+ *
+ * Streamed rather than assembled. 7,422 rows are about 38 MB of JSON and a
+ * Worker has 128 MB, so the lines go through a `CompressionStream` into the
+ * upload as they are read, and nothing holds the whole thing.
+ *
+ *     wrangler kv key put --binding SCAN_CACHE evidence-bundle '{"run":41}'
+ */
+export async function bundleRunEvidence(env: Env): Promise<{ run: number; rows: number } | null> {
+  const raw = await env.SCAN_CACHE.get(BUNDLE_KEY, "json");
+  if (raw === null) return null;
+  const { run } = raw as { run: number };
+
+  const { results } = await env.DB.prepare(`SELECT apex FROM scans WHERE run_id = ? ORDER BY apex`)
+    .bind(run)
+    .all<{ apex: string }>();
+
+  let rows = 0;
+  // Resolved when the producer is done, so the count reported is the count
+  // written. Without it `rows` is read while `start` is still running and is
+  // only correct because the real `put` happens to drain the stream first —
+  // a number that depends on who consumes it is not a number to log.
+  let finished: () => void = () => {};
+  const producing = new Promise<void>((resolve) => {
+    finished = resolve;
+  });
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      // Sequential on purpose. The whole job is one write at the end, so there
+      // is nothing to gain from racing reads, and a steady walk keeps memory flat.
+      for (const { apex } of results) {
+        const object = await env.ARTIFACTS.get(`evidence/${apex}/${run}.json`);
+        if (object === null) continue;
+        controller.enqueue(encoder.encode(`${await object.text()}\n`));
+        rows++;
+      }
+      controller.close();
+      finished();
+    },
+  });
+
+  await env.ARTIFACTS.put(
+    `evidence/bundles/run-${run}.jsonl.gz`,
+    stream.pipeThrough(new CompressionStream("gzip")),
+    { httpMetadata: { contentType: "application/gzip" } },
+  );
+
+  await producing;
+  await env.SCAN_CACHE.delete(BUNDLE_KEY);
+  return { run, rows };
+}

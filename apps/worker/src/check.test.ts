@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runCheck } from "./check.js";
 import type { Env } from "./env.js";
-import { runEvidenceBackfill } from "./evidence-backfill.js";
+import { bundleRunEvidence, runEvidenceBackfill } from "./evidence-backfill.js";
 
 /**
  * The on-demand check is the one thing on this site a stranger can make us do to
@@ -186,5 +186,63 @@ describe("evidence backfill", () => {
     const result = await runEvidenceBackfill(env);
     expect(result?.done).toBe(true);
     expect(kv.has("evidence-backfill")).toBe(false);
+  });
+});
+
+describe("run bundling", () => {
+  it("gathers a run's per-domain evidence into one gzipped object", async () => {
+    const evidence: Record<string, string> = {
+      "evidence/a.test/41.json": JSON.stringify({ apex: "a.test", runId: 41, checks: [] }),
+      "evidence/b.test/41.json": JSON.stringify({ apex: "b.test", runId: 41, checks: [] }),
+    };
+    const kv = new Map<string, string>([["evidence-bundle", JSON.stringify({ run: 41 })]]);
+    let written: { key: string; body: unknown } | undefined;
+
+    const env = {
+      SCAN_CACHE: {
+        get: async (k: string, t?: string) => {
+          const v = kv.get(k);
+          return v === undefined ? null : t === "json" ? JSON.parse(v) : v;
+        },
+        put: async (k: string, v: string) => void kv.set(k, v),
+        delete: async (k: string) => void kv.delete(k),
+      },
+      ARTIFACTS: {
+        get: async (key: string) =>
+          evidence[key] === undefined ? null : { text: async () => evidence[key] },
+        put: async (key: string, body: unknown) => void (written = { key, body }),
+      },
+      DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ results: [{ apex: "a.test" }, { apex: "b.test" }] }),
+          }),
+        }),
+      },
+    } as unknown as Env;
+
+    const result = await bundleRunEvidence(env);
+    expect(result).toEqual({ run: 41, rows: 2 });
+    expect(written?.key).toBe("evidence/bundles/run-41.jsonl.gz");
+
+    // Round-trip it, because "a stream was passed to put" is not the claim —
+    // the claim is that what lands is the gzipped JSONL a release is cut from.
+    const bytes = await new Response(written?.body as ReadableStream).arrayBuffer();
+    const text = await new Response(
+      new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")),
+    ).text();
+    const lines = text.trim().split("\n");
+    expect(lines).toHaveLength(2);
+    expect(JSON.parse(lines[0] as string).apex).toBe("a.test");
+
+    // And the request is cleared, so it does not rebuild every night.
+    expect(kv.has("evidence-bundle")).toBe(false);
+  });
+
+  it("does nothing when no bundle was asked for", async () => {
+    const env = {
+      SCAN_CACHE: { get: async () => null },
+    } as unknown as Env;
+    expect(await bundleRunEvidence(env)).toBeNull();
   });
 });

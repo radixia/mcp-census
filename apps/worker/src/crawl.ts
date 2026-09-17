@@ -22,7 +22,7 @@ import {
 import { dohResolveTxt, sleep, workerFetch } from "./adapters.js";
 import { computeAggregates, computeDeltas } from "./deltas.js";
 import type { CrawlMessage, Env } from "./env.js";
-import { runEvidenceBackfill } from "./evidence-backfill.js";
+import { bundleRunEvidence, runEvidenceBackfill } from "./evidence-backfill.js";
 import { closeRun, loadOptOuts, openRun, persistScan, persistUnreachable } from "./store.js";
 
 /**
@@ -153,6 +153,17 @@ export async function scheduled(event: ScheduledController, env: Env): Promise<v
   // Wrapped, because an unhandled throw here would abort `scheduled` and stop
   // the census — silently, nightly, until somebody noticed a missing run. A
   // maintenance job must never be able to take down the measurement it maintains.
+  // Bundling a run is the same kind of one-shot maintenance as the backfill and
+  // gets the same treatment: seeded by hand, wrapped so it cannot stop a crawl.
+  try {
+    const bundled = await bundleRunEvidence(env);
+    if (bundled !== null) {
+      console.log(`[census] bundled run ${bundled.run}: ${bundled.rows} rows`);
+    }
+  } catch (error) {
+    console.error(`[census] evidence bundling failed: ${String(error)}`);
+  }
+
   let backfilled = false;
   try {
     const backfill = await runEvidenceBackfill(env);
