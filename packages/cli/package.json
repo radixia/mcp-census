@@ -23,15 +23,14 @@
     "directory": "packages/cli"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json --noEmit && node build.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "@mcp-census/core": "workspace:*"
-  },
   "devDependencies": {
+    "@mcp-census/core": "workspace:*",
     "@types/node": "catalog:",
+    "esbuild": "^0.25.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
