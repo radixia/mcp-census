@@ -76,9 +76,9 @@ describe("worker responses", () => {
     expect(response.headers.get(header)).toBe(SECURITY_HEADERS[header]);
   });
 
-  it("carries X-Robots-Tag on the redirect while indexing is off", async () => {
+  it("carries no X-Robots-Tag on the redirect, now that indexing is on", async () => {
     const response = await handle(new Request("https://www.radixia.ai/census"));
-    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
+    expect(response.headers.get("x-robots-tag")).toBeNull();
   });
 
   it("does not redirect /census/ itself, so there is no loop", async () => {
@@ -113,34 +113,36 @@ describe("worker responses", () => {
 });
 
 describe("search indexing", () => {
-  it("is disabled before launch", () => {
-    // DELETE THIS TEST when going live on 2026-09-17. It exists so nobody ships
-    // an indexable census by accident — flipping SEARCH_INDEXING_ENABLED without
-    // noticing this test would be exactly that accident.
-    expect(SEARCH_INDEXING_ENABLED).toBe(false);
+  it("is enabled, as of launch on 2026-09-17", () => {
+    // Said to delete itself at launch. Kept and inverted instead: deleted, it
+    // would leave nothing asserting which side of the switch we are on, and this
+    // project has already shipped a build nobody noticed was the previous one.
+    expect(SEARCH_INDEXING_ENABLED).toBe(true);
   });
 
-  it("sends X-Robots-Tag on a page", async () => {
+  it("sends no X-Robots-Tag on a page", async () => {
     const response = await get("/census/");
-    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
+    expect(response.headers.get("x-robots-tag")).toBeNull();
   });
 
-  it("sends it on a 404 too, so a stray URL cannot be indexed", async () => {
+  it("sends none on a 404 either", async () => {
     const response = await get("/not-ours");
     expect(response.status).toBe(404);
-    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
+    expect(response.headers.get("x-robots-tag")).toBeNull();
   });
 
-  it("puts the matching meta tag in the markup", () => {
-    // Belt and braces: some crawlers read markup rather than headers, and the
-    // header alone would miss anything served through a cache that strips it.
+  it("puts no robots meta tag in the markup", () => {
+    // The markup half of the switch. It mattered while indexing was off because
+    // some crawlers read markup rather than headers; now it matters because a
+    // leftover meta tag would keep the census out of the index with every header
+    // saying otherwise.
     const html = landingPage({
       headline: { assessed: 1, unassessed: 0, anyDiscovery: 0, card: 0, confirmed: 0, nothing: 1 },
       candidates: [],
       runFinishedAt: null,
       runMethodologyVersion: null,
     });
-    expect(html).toContain('<meta name="robots" content="noindex, nofollow, noarchive">');
+    expect(html).not.toContain('name="robots"');
   });
 
   it("still declares a canonical URL, so the eventual index is on the right host", () => {

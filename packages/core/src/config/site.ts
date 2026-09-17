@@ -34,10 +34,12 @@ export const VANITY_DOMAIN = "mcpcensus.dev";
  * is also impossible here — `/robots.txt` belongs to the static site, whose
  * build we do not touch.
  *
- * **To go live: set this to `true`, deploy, and delete the test that asserts it
- * is false.** That test exists so nobody ships an indexable census by accident.
+ * **Live since 2026-09-17**, the morning of AGNTCon. While it was false every
+ * response carried `X-Robots-Tag` and every page a matching meta tag; both are
+ * now absent. The tests that guarded it were inverted rather than deleted, so
+ * something still asserts which side of the switch we are on.
  */
-export const SEARCH_INDEXING_ENABLED = false;
+export const SEARCH_INDEXING_ENABLED = true;
 
 /** Applied to every response while indexing is disabled. */
 export const NOINDEX_HEADER = "noindex, nofollow, noarchive";
