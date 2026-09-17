@@ -23,7 +23,7 @@ const CTA = {
   "heading": "Would you rather this said something else?",
   "body": "Radixia designs and runs the plumbing that makes a brand reachable by agents: MCP servers, discovery documents, and the boring parts that decide whether any of it can be found. We are in this dataset too.",
   "label": "How we work",
-  "url": "https://www.radixia.ai/enterprise-ai"
+  "url": "https://www.radixia.ai/capabilities/ai-architecture/"
 };
 
 export const RADIXIA_THEME: CensusTheme = {
