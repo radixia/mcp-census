@@ -86,10 +86,9 @@ const CENSUS_ONLY = {
  * imply a threat. If this copy ever starts sounding like a security warning,
  * that is a bug.
  *
- * `/enterprise-ai` and not `/capabilities/ai-architecture`: the latter 404s on the
- * currently deployed site and only exists on the content-2026-09 branch, whereas
- * /enterprise-ai answers 200 today and redirects to the new page once that branch
- * ships. It is the one URL that is correct before and after the deploy.
+ * `/capabilities/ai-architecture/`: the rebranded site is deployed and this is
+ * where the old `/enterprise-ai` now 301s. Linking the final URL avoids a redirect
+ * hop on every click from the census.
  */
 const CTA = {
   heading: "Would you rather this said something else?",
@@ -98,7 +97,7 @@ const CTA = {
     "MCP servers, discovery documents, and the boring parts that decide whether any of " +
     "it can be found. We are in this dataset too.",
   label: "How we work",
-  url: "https://www.radixia.ai/enterprise-ai",
+  url: "https://www.radixia.ai/capabilities/ai-architecture/",
 } as const;
 
 interface BrandTokens {

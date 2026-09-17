@@ -343,7 +343,7 @@ describe("getting back out, and the pitch", () => {
   it("renders the operator's CTA when there is one", () => {
     const card = ctaCard(radixia);
     expect(card).toContain('class="card cta"');
-    expect(card).toContain("https://www.radixia.ai/enterprise-ai");
+    expect(card).toContain("https://www.radixia.ai/capabilities/ai-architecture/");
     expect(card).toContain('class="btn"');
   });
 
