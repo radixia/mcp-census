@@ -140,6 +140,11 @@ export async function runEvidenceBackfill(env: Env): Promise<BackfillResult | nu
   if (raw === null) return null;
 
   const state = raw as BackfillState;
+  if (!Array.isArray(state.runs)) {
+    // An older or hand-typed shape. Drop it rather than throwing nightly.
+    await env.SCAN_CACHE.delete(STATE_KEY);
+    return null;
+  }
   const run = state.runs[0];
   if (run === undefined) {
     await env.SCAN_CACHE.delete(STATE_KEY);
@@ -223,9 +228,13 @@ const BUNDLE_KEY = "evidence-bundle";
  * Everything here is inside Cloudflare: a binding read per domain, a binding
  * write for the result.
  *
- * Streamed rather than assembled. 7,422 rows are about 38 MB of JSON and a
- * Worker has 128 MB, so the lines go through a `CompressionStream` into the
- * upload as they are read, and nothing holds the whole thing.
+ * Streamed on the way in, buffered on the way out. 7,422 rows are about 38 MB of
+ * JSON and a Worker has 128 MB, so the lines are read and compressed as they
+ * come. The compressed result is then held whole — about 2 MB — because R2
+ * refuses a body of unknown length: passing the `CompressionStream` straight to
+ * `put` fails with "Provided readable stream must have a known length", which
+ * the first version of this did. It passed its test, because the fake `put`
+ * accepted anything a real one would not.
  *
  *     wrangler kv key put --binding SCAN_CACHE evidence-bundle '{"run":41}'
  */
@@ -264,13 +273,14 @@ export async function bundleRunEvidence(env: Env): Promise<{ run: number; rows: 
     },
   });
 
-  await env.ARTIFACTS.put(
-    `evidence/bundles/run-${run}.jsonl.gz`,
-    stream.pipeThrough(new CompressionStream("gzip")),
-    { httpMetadata: { contentType: "application/gzip" } },
+  const compressed = new Uint8Array(
+    await new Response(stream.pipeThrough(new CompressionStream("gzip"))).arrayBuffer(),
   );
-
   await producing;
+
+  await env.ARTIFACTS.put(`evidence/bundles/run-${run}.jsonl.gz`, compressed, {
+    httpMetadata: { contentType: "application/gzip" },
+  });
   await env.SCAN_CACHE.delete(BUNDLE_KEY);
   return { run, rows };
 }

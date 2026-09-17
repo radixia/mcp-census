@@ -210,7 +210,15 @@ describe("run bundling", () => {
       ARTIFACTS: {
         get: async (key: string) =>
           evidence[key] === undefined ? null : { text: async () => evidence[key] },
-        put: async (key: string, body: unknown) => void (written = { key, body }),
+        put: async (key: string, body: unknown) => {
+          // R2 refuses a body of unknown length. A fake that accepts a bare
+          // ReadableStream green-lit exactly that, and it only surfaced when the
+          // job was run against real storage.
+          if (body instanceof ReadableStream) {
+            throw new TypeError("Provided readable stream must have a known length");
+          }
+          written = { key, body };
+        },
       },
       DB: {
         prepare: () => ({
@@ -227,9 +235,8 @@ describe("run bundling", () => {
 
     // Round-trip it, because "a stream was passed to put" is not the claim —
     // the claim is that what lands is the gzipped JSONL a release is cut from.
-    const bytes = await new Response(written?.body as ReadableStream).arrayBuffer();
     const text = await new Response(
-      new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")),
+      new Blob([written?.body as Uint8Array]).stream().pipeThrough(new DecompressionStream("gzip")),
     ).text();
     const lines = text.trim().split("\n");
     expect(lines).toHaveLength(2);
