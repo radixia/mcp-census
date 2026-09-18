@@ -380,6 +380,12 @@ const LATEST_RELEASE = {
   // nothing.
   methodology: "0.5.0",
   candidates: "2026-08-07",
+  // Zenodo mints a DOI per deposit and a concept DOI that always resolves to the
+  // newest. Cite the version when you cite a number: the number belongs to a
+  // release, not to the project. Earlier releases predate the deposit and have
+  // none, which is why this lives here and not in EARLIER_RELEASES.
+  doi: "10.5281/zenodo.22830292",
+  conceptDoi: "10.5281/zenodo.22830291",
   files: [
     { name: "summary.json", what: "The headline numbers and per-check pass rates", size: "1.8 KB" },
     { name: "census.csv", what: "One row per domain: score, band, every check", size: "835 KB" },
@@ -571,6 +577,16 @@ ${LATEST_RELEASE.files
 <p class="note">The per-domain rows are gzipped JSONL rather than JSON: same data, one object per
 line, and 38&nbsp;MB becomes 2&nbsp;MB. <code>to-parquet.sql</code> turns any of it into Parquet
 with DuckDB, so nobody has to trust a query service of ours to re-derive a statistic.</p>
+
+<h2>How to cite</h2>
+<p>The release is deposited at Zenodo, so it has a DOI and outlives this site.</p>
+<pre class="mono">D&#39;Angelo, M. (2026). MCP Census: can an agent find your MCP server?
+(Version ${esc(LATEST_RELEASE.date)}) [Data set]. Zenodo.
+https://doi.org/${esc(LATEST_RELEASE.doi)}</pre>
+<p class="note">That DOI names <strong>this</strong> release and never moves, which is what you
+want beside a number you quote. <a href="https://doi.org/${esc(LATEST_RELEASE.conceptDoi)}"><code>${esc(
+        LATEST_RELEASE.conceptDoi,
+      )}</code></a> is the concept DOI and always resolves to the newest release instead.</p>
 
 <h2>Earlier releases</h2>
 <p>Kept exactly as issued. A citable artifact that changes is not one, so a correction ships as a
