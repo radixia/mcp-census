@@ -406,6 +406,39 @@ The things that weaken our own findings. This section is not a formality.
     The number is a compromise and should be revisited. Raising it recovers a few
     dozen genuinely slow domains; lowering it costs coverage. What must not happen
     again is a domain silently producing no row at all.
+22. **An unreachable `robots.txt` is treated as permission, and RFC 9309 says it
+    should be treated as refusal.** `loadRobots()` returns the empty document for
+    anything that is not a 2xx, and an empty document allows every path. A `404`
+    and a timeout therefore reach the crawler as the same answer.
+
+    For a `404` that is correct: RFC 9309 §2.3.1.3 reads a `4xx` as "no
+    restrictions". For a `5xx`, a connection failure or a timeout it is not:
+    §2.3.1.4 says a crawler **SHOULD** assume complete disallow, and may only
+    continue after a prolonged unavailability. We do not, so a domain whose
+    `robots.txt` was momentarily unreachable was probed anyway.
+
+    This is a defect in a promise, not in a statistic — no score moves — but
+    `docs/CRAWLER-ETHICS.md` says we respect `robots.txt` for every path, and on
+    those domains we did not. The fix is to carry the transport outcome out of
+    `loadRobots()` and refuse the domain rather than default it open. It changes
+    which domains are measured, so it is a methodology revision and not a patch.
+23. **A failed fetch and a published absence are the same row.** The same
+    conflation, seen from the data side: `F2` records `hasRobotsTxt: false`
+    whether the file is absent or merely unreadable, and `F1` records a candidate
+    as not found whether it answered `404` or never answered. Neither check can
+    return an error, so neither ever does.
+
+    In release `2026-09-13`, **2,118 of 7,422** domains carry `F2` as a failure
+    with no `robots.txt` recorded, and **234** carry `F1` as a failure with no
+    response on any of the three candidates. Most of the first group genuinely
+    publish no `robots.txt` — it is a common thing not to have — but the
+    published evidence does not let a reader tell the two apart, and neither can
+    we. The count of domains that declared nothing is therefore an **upper
+    bound**, not a measurement.
+
+    This is the same mistake the outcome taxonomy fixed in `0.3.0` for HTTP
+    statuses, surviving one layer lower for transport failures. The fix is the
+    same shape: record the outcome, and let the check error rather than fail.
 
 ## Open questions
 
