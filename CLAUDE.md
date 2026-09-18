@@ -155,7 +155,15 @@ Re-verify before each census run and update SPEC-NOTES with URLs and access date
 
 ---
 
-## Methodology 0.4.0 — what the checks measure now
+## Methodology 0.5.0 — what the checks measure now
+
+`0.5.0` (2026-08-19) adds no check and removes none, so scores stay comparable
+across the bump: it gives a domain a 300s wall-clock budget, past which every
+candidate records `budget_exhausted`, the check errors rather than fails, and the
+domain is **unassessed — never absent**. It exists because two slow domains left
+the Sunday full run of 2026-08-16 short of plan and out of the adoption series.
+
+### Added in 0.4.0
 
 Three additions on 2026-08-07, all prompted by reading the working group's own
 open issues rather than by inventing metrics.
@@ -190,7 +198,7 @@ band. That is what keeps run 3 and run 6 comparable across the bump.
 
 ## Failure modes this project keeps repeating
 
-Five of these are real and dated. They are the same mistake wearing
+Six of these are real and dated. They are the same mistake wearing
 different clothes, so check for them before adding anything.
 
 1. **A page printing the running code's version beside a frozen measurement.**
@@ -213,6 +221,16 @@ different clothes, so check for them before adding anything.
    30-second `expirationTtl`; the real one rejects anything under 60, and
    `/census/check` returned 1101 for an hour behind 145 green tests. `pnpm test`
    now runs `typecheck` first, and the fake enforces the floor.
+
+6. **A record split across two stores, and only one of them read.** `store.ts`
+   writes the checks to R2 and the score to D1, and nothing reads both. The
+   evidence bundler concatenates the R2 objects, so a release cut from a bundle
+   carries no `score`, `requestCount`, `durationMs` or `observedAt` — empty
+   `assessed`, `score` and `band` for every domain in the published CSV. Invisible
+   until 2026-09-18 because every release until then came from the local runner,
+   whose rows carry everything. Caught one step before a DOI that cannot be
+   withdrawn. `scripts/export/from-worker-run.ts` joins the two and refuses to
+   write unless every recomputed score matches the one D1 recorded at crawl time.
 
 ## Rules for working in this repo
 
@@ -246,7 +264,7 @@ different clothes, so check for them before adding anything.
 | 4 | Full census over Universe R + D | **done**. Run 3 (2026-08-05, methodology 0.2.0-draft) and run 6 (2026-08-07, methodology 0.4.0), 7,421 assessed each. Nightly cron live since 2026-08-06; Sunday is the full universe |
 | 5 | Shadow MCP classification | **partial** — see below |
 | 6 | Public site, live at www.radixia.ai/census/ | **done** 2026-08-05 |
-| 7 | Data release, Parquet, Zenodo | releases `2026-08-05` and `2026-08-07` at `/census/data`, both immutable. **Zenodo waits for the launch release** — Marco's decision 2026-08-07 |
+| 7 | Data release, Parquet, Zenodo | releases `2026-08-05`, `2026-08-07` and `2026-08-09` at `/census/data`, all immutable. `2026-09-13` prepared on branch `release/2026-09-13` — the first cut from a Worker run. **Zenodo still waits on the account** |
 | 8 | Conference mode | not started |
 
 Work strictly in order. Stop at each phase boundary, show Marco, wait for
