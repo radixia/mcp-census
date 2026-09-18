@@ -370,7 +370,7 @@ const REPO = "https://github.com/radixia/mcp-census";
  * reader can tell a truncated download from a complete one.
  */
 const LATEST_RELEASE = {
-  date: "2026-08-09",
+  date: "2026-09-13",
   domains: 7422,
   assessed: 7421,
   // Pinned, not read from the running code. `METHODOLOGY_VERSION` here meant the
@@ -378,15 +378,15 @@ const LATEST_RELEASE = {
   // day 0.4.0 shipped it described the August 5th release, built under 0.2.0, as
   // 0.4.0. A release states the version it was measured under or it states
   // nothing.
-  methodology: "0.4.0",
+  methodology: "0.5.0",
   candidates: "2026-08-07",
   files: [
     { name: "summary.json", what: "The headline numbers and per-check pass rates", size: "1.8 KB" },
-    { name: "census.csv", what: "One row per domain: score, band, every check", size: "831 KB" },
+    { name: "census.csv", what: "One row per domain: score, band, every check", size: "835 KB" },
     {
       name: "census.jsonl.gz",
       what: "Per-domain rows with full evidence, one JSON object per line",
-      size: "2.1 MB",
+      size: "1.9 MB",
     },
     { name: "universe.csv", what: "The frozen population, with provenance", size: "437 KB" },
     { name: "to-parquet.sql", what: "DuckDB script: any of the above to Parquet", size: "621 B" },
@@ -400,6 +400,11 @@ const LATEST_RELEASE = {
  * artifact that changes is not one.
  */
 const EARLIER_RELEASES = [
+  {
+    date: "2026-08-09",
+    methodology: "0.4.0",
+    what: "Eleven checks, unchanged from 2026-08-07, and the first to carry a timestamp per domain. The last cut from the local runner.",
+  },
   {
     date: "2026-08-07",
     methodology: "0.4.0",
